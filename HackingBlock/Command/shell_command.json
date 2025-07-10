@@ -1,0 +1,80 @@
+[
+  {
+    "name": "cd_command",
+    "description": "현재 작업 디렉토리를 변경합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "cd {path}",
+    "preconditions": {
+      "shell_access": true
+    },
+    "effects": {
+      "current_path_changed": true
+    }
+  },
+  {
+    "name": "ls_command",
+    "description": "디렉토리의 파일 및 폴더 목록을 보여줍니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "ls {options} {path}",
+    "preconditions": {
+      "shell_access": true
+    },
+    "effects": {
+      "file_list_known": true
+    },
+    "available_options": {
+      "-a": "숨김 파일을 포함한 모든 항목을 보여줍니다.",
+      "-l": "자세한 정보(권한, 소유자 등)를 함께 보여줍니다."
+    }
+  },
+  {
+    "name": "grep_command",
+    "description": "파일이나 입력에서 특정 패턴(키워드)을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "grep {options} '{pattern}' {target}",
+    "preconditions": {
+      "shell_access": true,
+      "target_file_known": true
+    },
+    "effects": {
+      "found_keyword": true
+    },
+    "available_options": {
+      "-r": "하위 디렉토리까지 재귀적으로 검색합니다.",
+      "-i": "대소문자를 무시합니다.",
+      "-n": "라인 번호를 함께 출력합니다."
+    }
+  },
+  {
+    "name": "cat_command",
+    "description": "파일의 전체 내용을 화면에 출력합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "cat {filepath}",
+    "preconditions": {
+      "shell_access": true,
+      "target_file_known": true
+    },
+    "effects": {
+      "file_content_read": true
+    }
+  },
+  {
+    "name": "file_command",
+    "description": "파일의 종류(타입)를 식별합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "file {filepath}",
+    "preconditions": {
+      "shell_access": true,
+      "target_file_known": true
+    },
+    "effects": {
+      "file_type_identified": true
+    }
+  }
+]
+
+
+
+
+
+

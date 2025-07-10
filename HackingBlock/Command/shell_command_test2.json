@@ -1,0 +1,150 @@
+
+
+[
+  {
+    "name": "find_command",
+    "description": "파일 시스템에서 특정 조건의 파일을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "find {path} -name '{filename}' {options}",
+    "preconditions": { "shell_access": true },
+    "effects": { "file_path_found": true },
+    "available_options": {
+      "-type f": "타입이 파일인 것만 검색합니다.",
+      "-perm -4000": "SUID 권한이 설정된 파일을 검색합니다."
+    }
+  },
+  {
+    "name": "grep_command",
+    "description": "파일 내용이나 다른 출력에서 특정 패턴을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "grep {options} '{pattern}' {target}",
+    "preconditions": { "shell_access": true, "target_file_known": true },
+    "effects": { "found_keyword": true },
+    "available_options": {
+      "-i": "대소문자를 무시합니다.",
+      "-r": "하위 디렉토리까지 재귀적으로 검색합니다."
+    }
+  },
+  {
+    "name": "file_command",
+    "description": "파일의 종류(타입)를 식별합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "file {filepath}",
+    "preconditions": { "shell_access": true, "target_file_known": true },
+    "effects": { "file_type_identified": true }
+  },
+  {
+    "name": "strings_command",
+    "description": "바이너리 파일을 포함한 모든 파일에서 문자열을 추출합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "strings {options} {filepath}",
+    "preconditions": { "shell_access": true, "target_file_known": true },
+    "effects": { "strings_extracted": true },
+    "available_options": {
+      "-n 10": "최소 10글자 이상인 문자열만 추출합니다."
+    }
+  },
+  {
+    "name": "base64_decode_command",
+    "description": "Base64로 인코딩된 내용을 디코딩합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "base64 -d {filepath}",
+    "preconditions": { "shell_access": true, "target_file_known": true },
+    "effects": { "file_decoded": true }
+  },
+  {
+    "name": "unzip_command",
+    "description": ".zip 확장자 압축 파일을 해제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "unzip {filepath}",
+    "preconditions": { "shell_access": true, "archive_file_known": true },
+    "effects": { "archive_extracted": true }
+  },
+  {
+    "name": "tar_extract_command",
+    "description": ".tar 또는 .tar.gz 압축 파일을 해제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "tar xvf {filepath}",
+    "preconditions": { "shell_access": true, "archive_file_known": true },
+    "effects": { "archive_extracted": true }
+  },
+  {
+    "name": "gunzip_command",
+    "description": ".gz 확장자 압축 파일을 해제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "gunzip {filepath}",
+    "preconditions": { "shell_access": true, "archive_file_known": true },
+    "effects": { "archive_extracted": true }
+  },
+  {
+    "name": "nmap_command",
+    "description": "네트워크 스캔을 통해 포트, 서비스, 버전 정보 등을 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "nmap {options} {target_ip}",
+    "preconditions": { "target_ip_known": true },
+    "effects": { "port_info_known": true },
+    "available_options": {
+      "-sV": "서비스 및 버전 상세 정보를 확인합니다.",
+      "-p-": "모든 포트(1-65535)를 스캔합니다."
+    }
+  },
+  {
+    "name": "gobuster_dir_command",
+    "description": "웹사이트의 디렉토리 및 파일을 브루트포싱하여 찾습니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "gobuster dir -u {target_url} -w {wordlist_path}",
+    "preconditions": { "target_url_known": true, "wordlist_available": true },
+    "effects": { "web_dirs_found": true }
+  },
+  {
+    "name": "searchsploit_command",
+    "description": "서비스나 버전에 대한 공개된 취약점(Exploit-DB)을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "searchsploit {keyword}",
+    "preconditions": { "shell_access": true, "service_version_known": true },
+    "effects": { "exploit_code_found": true }
+  },
+  {
+    "name": "john_command",
+    "description": "John the Ripper를 사용해 패스워드 해시를 크래킹합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "john {options} {hash_file_path}",
+    "preconditions": { "shell_access": true, "hash_file_known": true },
+    "effects": { "password_cracked": true },
+    "available_options": {
+      "--show": "크래킹된 패스워드를 보여줍니다."
+    }
+  },
+  {
+    "name": "exiftool_command",
+    "description": "파일의 메타데이터(EXIF)를 읽습니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "exiftool {filepath}",
+    "preconditions": { "shell_access": true, "target_file_known": true },
+    "effects": { "metadata_extracted": true }
+  },
+  {
+    "name": "netcat_listen_command",
+    "description": "Netcat을 이용해 특정 포트에서 연결을 기다립니다 (리스닝).",
+    "base_block_type": "generic_shell_command",
+    "command_template": "nc -lvnp {port}",
+    "preconditions": { "shell_access": true },
+    "effects": { "listening_on_port": true }
+  },
+  {
+    "name": "linenum_command",
+    "description": "LinEnum 스크립트를 실행하여 권한 상승 정보를 자동 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "./LinEnum.sh {options}",
+    "preconditions": { "shell_access": true, "linenum_script_available": true },
+    "effects": { "privesc_info_gathered": true }
+  },
+  {
+    "name": "sherlock_command",
+    "description": "사용자 이름으로 여러 소셜 미디어에서 계정을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "python3 sherlock.py {username}",
+    "preconditions": { "shell_access": true, "sherlock_installed": true },
+    "effects": { "sns_accounts_found": true }
+  }
+]

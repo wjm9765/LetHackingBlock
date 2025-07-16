@@ -1,0 +1,32 @@
+[
+  {
+    "name": "find_and_unzip_method",
+    "target_task": "t_find_and_unzip",
+    "sequence": [
+      ["find_command", {"path": ".", "filename": "*.zip"}],
+      ["unzip_command", {"filepath": "{PREVIOUS_OUTPUT}"}]
+    ]
+  },
+  {
+    "name": "extract_number_from_flag_method",
+    "target_task": "t_extract_final_number",
+    "sequence": [
+      ["ls_command", {"options": "-l", "path": "."}],
+      ["cat_command", {"filepath": "flag\\ test.txt"}],
+      ["pipe_command", {}],
+      ["grep_command", {"pattern": "number :"}],
+      ["pipe_command", {}],
+      ["grep_command", {"pattern": "number :"}],
+      ["pipe_command", {}],
+      ["cut_command", {"delimiter": ":", "field_number": "2"}]
+    ]
+  },
+  {
+    "name": "get_secret_from_zip_method",
+    "target_task": "t_get_secret_from_zip",
+    "sequence": [
+      ["t_find_and_unzip"],
+      ["t_extract_final_number"]
+    ]
+  }
+]

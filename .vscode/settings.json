@@ -1,0 +1,11 @@
+{
+    "python.defaultInterpreterPath": "./venv/bin/python3",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.envFile": "${workspaceFolder}/.env",
+    "terminal.integrated.env.osx": {
+        "PATH": "${workspaceFolder}/venv/bin:${env:PATH}"
+    },
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.extraPaths": ["./venv/lib/python3.13/site-packages"]
+}

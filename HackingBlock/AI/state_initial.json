@@ -1,0 +1,28 @@
+{
+  "mission": {
+    "goal_description": "Find the flag file on the target server.",
+    "objective_type": "FLAG_CAPTURE"
+  },
+  "session": {
+    "current_user": "user",
+    "current_host": "10.10.10.123",
+    "current_path": "/home/user"
+  },
+  "knowledge_base": {
+    "hosts": [
+      {
+        "ip_address": "10.10.10.123",
+        "hostnames": [],
+        "os": null,
+        "open_ports": [],
+        "vulnerabilities": [],
+        "credentials": []
+      }
+    ],
+    "files_of_interest": []
+  },
+  "achievements": [],
+  "history": {
+    "last_n_commands": []
+  }
+}

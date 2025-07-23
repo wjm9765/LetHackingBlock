@@ -1,32 +1,321 @@
-
 [
   {
     "name": "ls_command",
     "description": "디렉토리의 파일 및 폴더 목록을 보여줍니다.",
     "base_block_type": "generic_shell_command",
     "command_template": "ls {options} {path}",
-    "preconditions": { "shell_access": true },
-    "effects": { "target": true },
     "available_options": {
-        "-a": "숨김 파일을 포함한 모든 항목을 보여줍니다.",
-        "-l": "자세한 정보(권한, 소유자 등)를 함께 보여줍니다."
+      "-a": "숨김 파일을 포함한 모든 항목을 보여줍니다.",
+      "-l": "자세한 정보(권한, 소유자 등)를 함께 보여줍니다."
     },
     "parser_info": {
-      "type": "llm_based",
+      "type": "rule_based",
+      "storage_rule": "split_words",
       "target_field": "knowledge_base.known_facts",
-      "prompt_template": "다음은 ls 명령어의 결과입니다. 해킹 관점에서 유용한 모든 정보를 우선순위 순으로 정리해주세요. 각 파일/디렉토리에 대해 파일명, 권한, 소유자, 크기, 날짜 등 모든 정보를 포함하여 정리해주세요.(원본 파일에 없으면 생략 가능) 우선순위가 높은 것부터 나열하되, 원본 데이터의 모든 내용이 포함되어야 합니다. 정보 이외에 불필요한 대답은 하지 마세요. 그리고 대답 토큰을 줄이기 위해 불필요한 기호나, 숫자, 문자를 사용하지 마세요"
+      "max_items": 50
+    },
+    "option_parser_info": {
+      "-l": {
+        "type": "rule_based",
+        "storage_rule": "split_lines",
+        "target_field": "file_system.file_details",
+        "max_items": 100
+      },
+      "-la": {
+        "type": "rule_based",
+        "storage_rule": "split_lines",
+        "target_field": "file_system.file_details",
+        "max_items": 100
+      },
+      "-al": {
+        "type": "rule_based",
+        "storage_rule": "split_lines",
+        "target_field": "file_system.file_details",
+        "max_items": 100
+      },
+      "-a": {
+        "type": "rule_based",
+        "storage_rule": "split_words",
+        "target_field": "knowledge_base.known_facts",
+        "max_items": 50
+      }
+    }
+  },
+  {
+    "name": "cd_command",
+    "description": "현재 작업 디렉토리를 변경합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "cd {path}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "session.current_path",
+      "default_value": "directory_changed"
+    }
+  },
+  {
+    "name": "pwd_command",
+    "description": "현재 작업 디렉토리의 경로를 출력합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "pwd",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "single",
+      "target_field": "session.current_path"
+    }
+  },
+  {
+    "name": "mkdir_command",
+    "description": "새 디렉토리를 생성합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "mkdir {options} {dirname}",
+    "available_options": {
+      "-p": "상위 디렉토리도 함께 생성합니다."
+    },
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.created_directories",
+      "default_value": "directory_created"
+    }
+  },
+  {
+    "name": "touch_command",
+    "description": "빈 파일을 생성하거나 파일의 타임스탬프를 업데이트합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "touch {filename}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.created_files",
+      "default_value": "file_created"
+    }
+  },
+  {
+    "name": "rm_command",
+    "description": "파일이나 디렉토리를 삭제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "rm {options} {filepath}",
+    "available_options": {
+      "-r": "디렉토리와 그 내용을 재귀적으로 삭제합니다.",
+      "-f": "강제로 삭제하며 확인을 요청하지 않습니다."
+    },
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.deleted_files",
+      "default_value": "file_deleted"
+    }
+  },
+  {
+    "name": "mv_command",
+    "description": "파일이나 디렉토리를 이동하거나 이름을 변경합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "mv {source} {destination}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.file_operations",
+      "default_value": "file_moved"
+    }
+  },
+  {
+    "name": "cp_command",
+    "description": "파일이나 디렉토리를 복사합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "cp {options} {source} {destination}",
+    "available_options": {
+      "-r": "디렉토리와 그 내용을 재귀적으로 복사합니다."
+    },
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.file_operations",
+      "default_value": "file_copied"
+    }
+  },
+  {
+    "name": "chmod_command",
+    "description": "파일이나 디렉토리의 권한을 변경합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "chmod {permissions} {filepath}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.permission_changes",
+      "default_value": "permissions_changed"
+    }
+  },
+  {
+    "name": "chown_command",
+    "description": "파일이나 디렉토리의 소유자를 변경합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "chown {owner}:{group} {filepath}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.ownership_changes",
+      "default_value": "ownership_changed"
+    }
+  },
+  {
+    "name": "export_command",
+    "description": "환경 변수를 설정합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "export {variable_name}={value}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "session.environment_variables",
+      "default_value": "variable_set"
+    }
+  },
+  {
+    "name": "unset_command",
+    "description": "환경 변수를 제거합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "unset {variable_name}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "session.environment_variables",
+      "default_value": "variable_unset"
+    }
+  },
+  {
+    "name": "alias_command",
+    "description": "명령어 별칭을 설정합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "alias {alias_name}='{command}'",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "session.command_aliases",
+      "default_value": "alias_created"
+    }
+  },
+  {
+    "name": "source_command",
+    "description": "스크립트 파일을 현재 셸에서 실행합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "source {script_path}",
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "session.sourced_scripts",
+      "default_value": "script_sourced"
     }
   },
   {
     "name": "cat_command",
     "description": "파일의 내용을 출력합니다.",
+    "base_block_type": "generic_shell_command",
     "command_template": "cat {filepath}",
-    "preconditions": { "shell_access": true, "target": true },
-    "effects": { "file_content_read": true },
     "parser_info": {
       "type": "llm_based",
       "target_field": "knowledge_base.known_facts",
-      "prompt_template": "다음 파일 내용에서 해킹에 유용할 수 있는 정보(예: 비밀번호, 설정 오류, 사용자 이름, 숨겨진 경로 등)를 분석하고 요약해줘. 그 정보를 한줄씩 나열해줘, 정보 이외에 불필요한 대답은 하지마"
+      "llm_prompt": "다음 파일 내용에서 해킹에 유용할 수 있는 정보(예: 비밀번호, 설정 오류, 사용자 이름, 숨겨진 경로 등)를 분석하고 요약해줘. 그 정보를 한줄씩 나열해줘. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "cut_command",
+    "description": "입력에서 특정 구분자로 필드를 잘라냅니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "cut -d '{delimiter}' -f {field_number}",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "extracted_data.cut_results",
+      "max_items": 50
+    }
+  },
+  {
+    "name": "find_command",
+    "description": "파일 시스템에서 특정 조건의 파일을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "find {path} -name '{filename}'",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "file_system.found_files",
+      "max_items": 100
+    }
+  },
+  {
+    "name": "grep_command",
+    "description": "파일 내용이나 다른 출력에서 특정 패턴을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "grep {options} '{pattern}' '{target}'",
+    "available_options": {
+      "-i": "대소문자를 무시합니다.",
+      "-r": "하위 디렉토리까지 재귀적으로 검색합니다."
+    },
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "search_results.grep_matches",
+      "max_items": 100
+    }
+  },
+  {
+    "name": "file_command",
+    "description": "파일의 종류(타입)를 식별합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "file {filepath}",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "file_system.file_types",
+      "max_items": 50
+    }
+  },
+  {
+    "name": "strings_command",
+    "description": "바이너리 파일을 포함한 모든 파일에서 문자열을 추출합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "strings {options} {filepath}",
+    "available_options": {
+      "-n 10": "최소 10글자 이상인 문자열만 추출합니다."
+    },
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "knowledge_base.known_facts",
+      "llm_prompt": "다음 strings 명령어 출력에서 보안상 중요한 문자열(패스워드, URL, 경로, 함수명 등)을 식별하고 분석해주세요. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "base64_decode_command",
+    "description": "Base64로 인코딩된 내용을 디코딩합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "base64 -d {filepath}",
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "knowledge_base.known_facts",
+      "llm_prompt": "다음 Base64 디코딩 결과를 분석하여 중요한 정보나 보안 관련 내용을 추출해주세요. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "unzip_command",
+    "description": ".zip 확장자 압축 파일을 해제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "unzip -o {filepath}",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "file_system.extracted_files",
+      "max_items": 100
+    }
+  },
+  {
+    "name": "tar_extract_command",
+    "description": ".tar 또는 .tar.gz 압축 파일을 해제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "tar xvf {filepath}",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "file_system.extracted_files",
+      "max_items": 100
+    }
+  },
+  {
+    "name": "gunzip_command",
+    "description": ".gz 확장자 압축 파일을 해제합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "gunzip {filepath}",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "file_system.extracted_files",
+      "max_items": 50
     }
   },
   {
@@ -34,12 +323,9 @@
     "description": "네트워크 스캔을 통해 포트, 서비스, 버전 정보 등을 확인합니다.",
     "base_block_type": "generic_shell_command",
     "command_template": "nmap {options} {target_ip}",
-    "preconditions": { "target_ip_known": true },
-    "effects": { "port_info_known": true, "service_version_known": true },
     "parser_info": {
       "type": "regex_based",
-      "target_identifier_from": "target_ip",
-      "target_field": "knowledge_base.targets",
+      "target_field": "network_info.discovered_services",
       "patterns": [
         {
           "regex": "(\\d+)/(tcp|udp)\\s+(open|closed|filtered)\\s+(\\w+)\\s*(.*)$",
@@ -59,11 +345,9 @@
     "description": "웹사이트의 디렉토리 및 파일을 브루트포싱하여 찾습니다.",
     "base_block_type": "generic_shell_command",
     "command_template": "gobuster dir -u {target_url} -w {wordlist_path}",
-    "preconditions": { "target_url_known": true, "wordlist_available": true },
-    "effects": { "web_dirs_found": true },
     "parser_info": {
       "type": "regex_based",
-      "target_field": "knowledge_base.known_facts",
+      "target_field": "web_info.discovered_directories",
       "patterns": [
         {
           "regex": "(/[^\\s]+)\\s+\\(Status:\\s*(\\d+)\\)\\s*\\[Size:\\s*(\\d+)\\]",
@@ -77,14 +361,256 @@
     }
   },
   {
-    "name": "whoami_command",
-    "description": "현재 사용자를 확인합니다.",
-    "command_template": "whoami",
-    "preconditions": { "shell_access": true },
-    "effects": { "user_identified": true },
+    "name": "searchsploit_command",
+    "description": "서비스나 버전에 대한 공개된 취약점(Exploit-DB)을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "searchsploit {keyword}",
+    "parser_info": {
+      "type": "regex_based",
+      "target_field": "security_info.available_exploits",
+      "patterns": [
+        {
+          "regex": "([^|]+)\\s*\\|\\s*([^|]+)\\s*\\|\\s*([^|]+)$",
+          "mapping": {
+            "exploit_name": 1,
+            "platform": 2,
+            "exploit_db_id": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "john_command",
+    "description": "John the Ripper를 사용해 패스워드 해시를 크래킹합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "john {options} {hash_file_path}",
+    "parser_info": {
+      "type": "regex_based",
+      "target_field": "security_info.cracked_passwords",
+      "patterns": [
+        {
+          "regex": "([^\\s:]+)\\s+\\(([^)]+)\\)",
+          "mapping": {
+            "password": 1,
+            "username": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "exiftool_command",
+    "description": "파일의 메타데이터(EXIF)를 읽습니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "exiftool {filepath}",
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "knowledge_base.known_facts",
+      "llm_prompt": "다음 EXIF 메타데이터에서 보안상 중요한 정보(GPS 좌표, 카메라 정보, 소프트웨어 버전 등)를 추출하고 분석해주세요. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "netcat_listen_command",
+    "description": "Netcat을 이용해 특정 포트에서 연결을 기다립니다 (리스닝).",
+    "base_block_type": "generic_shell_command",
+    "command_template": "nc -lvnp {port}",
     "parser_info": {
       "type": "rule_based",
-      "target_field": "knowledge_base.known_facts"
+      "storage_rule": "split_lines",
+      "target_field": "network_services.listening_ports",
+      "max_items": 20
+    }
+  },
+  {
+    "name": "linenum_command",
+    "description": "LinEnum 스크립트를 실행하여 권한 상승 정보를 자동 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "./LinEnum.sh {options}",
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "knowledge_base.known_facts",
+      "llm_prompt": "다음 LinEnum 스크립트 출력에서 권한 상승에 사용할 수 있는 취약점이나 중요한 정보를 식별하고 우선순위를 매겨 분석해주세요. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "sherlock_command",
+    "description": "사용자 이름으로 여러 소셜 미디어에서 계정을 검색합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "python3 sherlock.py {username}",
+    "parser_info": {
+      "type": "regex_based",
+      "target_field": "osint_info.social_media_accounts",
+      "patterns": [
+        {
+          "regex": "\\[\\+\\]\\s*([^:]+):\\s*(https?://[^\\s]+)",
+          "mapping": {
+            "platform": 1,
+            "url": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "ps_command",
+    "description": "실행 중인 프로세스 목록을 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "ps {options}",
+    "available_options": {
+      "aux": "모든 프로세스의 상세 정보를 표시합니다.",
+      "-ef": "모든 프로세스를 풀 포맷으로 표시합니다."
+    },
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_words",
+      "target_field": "system_info.processes",
+      "max_items": 50
+    },
+    "option_parser_info": {
+      "aux": {
+        "type": "rule_based",
+        "storage_rule": "extract_process_lines",
+        "target_field": "system_info.detailed_processes",
+        "max_items": 100
+      },
+      "-ef": {
+        "type": "rule_based",
+        "storage_rule": "extract_process_lines",
+        "target_field": "system_info.detailed_processes",
+        "max_items": 100
+      }
+    }
+  },
+  {
+    "name": "netstat_command",
+    "description": "네트워크 연결 상태와 포트 정보를 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "netstat {options}",
+    "available_options": {
+      "-tulpn": "TCP/UDP 포트의 리스닝 상태와 프로세스 정보를 표시합니다.",
+      "-an": "모든 연결과 리스닝 포트를 숫자로 표시합니다."
+    },
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "split_lines",
+      "target_field": "network_info.connections",
+      "max_items": 50
+    },
+    "option_parser_info": {
+      "-tulpn": {
+        "type": "rule_based",
+        "storage_rule": "extract_network_lines",
+        "target_field": "network_info.listening_ports",
+        "max_items": 50
+      },
+      "-an": {
+        "type": "rule_based",
+        "storage_rule": "extract_network_lines",
+        "target_field": "network_info.all_connections",
+        "max_items": 100
+      }
+    }
+  },
+  {
+    "name": "whoami_command",
+    "description": "현재 사용자의 이름을 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "whoami",
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "single",
+      "target_field": "session.current_user"
+    }
+  },
+  {
+    "name": "id_command",
+    "description": "현재 사용자의 ID와 그룹 정보를 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "id {username}",
+    "parser_info": {
+      "type": "regex_based",
+      "target_field": "system_info.user_privileges",
+      "patterns": [
+        {
+          "regex": "uid=(\\d+)\\(([^)]+)\\)\\s+gid=(\\d+)\\(([^)]+)\\)\\s+groups=(.+)$",
+          "mapping": {
+            "uid": 1,
+            "username": 2,
+            "gid": 3,
+            "groupname": 4,
+            "groups": 5
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "uname_command",
+    "description": "시스템 정보를 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "uname {options}",
+    "available_options": {
+      "-a": "모든 시스템 정보를 표시합니다.",
+      "-r": "커널 릴리즈 정보를 표시합니다."
+    },
+    "parser_info": {
+      "type": "rule_based",
+      "storage_rule": "single",
+      "target_field": "system_info.kernel_info"
+    }
+  },
+  {
+    "name": "ifconfig_command",
+    "description": "네트워크 인터페이스 정보를 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "ifconfig {interface}",
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "network_info.interface_details",
+      "llm_prompt": "다음 ifconfig 출력에서 네트워크 인터페이스의 IP 주소, MAC 주소, 네트워크 상태 등 중요한 정보를 추출하고 분석해주세요. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "w_command",
+    "description": "현재 로그인한 사용자와 활동 정보를 확인합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "w",
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "system_info.logged_users",
+      "llm_prompt": "다음 w 명령어 출력에서 로그인한 사용자, 접속 시간, 활동 내용 등 보안상 중요한 정보를 추출하고 분석해주세요. 정보 이외의 불필요한 대답은 하지마"
+    }
+  },
+  {
+    "name": "wget_command",
+    "description": "웹에서 파일을 다운로드합니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "wget {options} {url}",
+    "available_options": {
+      "-O": "다운로드한 파일의 이름을 지정합니다.",
+      "-q": "조용한 모드로 실행합니다."
+    },
+    "parser_info": {
+      "type": "state_only",
+      "target_field": "file_system.downloaded_files",
+      "default_value": "file_downloaded"
+    }
+  },
+  {
+    "name": "curl_command",
+    "description": "HTTP 요청을 보내고 응답을 받습니다.",
+    "base_block_type": "generic_shell_command",
+    "command_template": "curl {options} {url}",
+    "available_options": {
+      "-I": "헤더 정보만 가져옵니다.",
+      "-s": "조용한 모드로 실행합니다.",
+      "-L": "리다이렉트를 따라갑니다."
+    },
+    "parser_info": {
+      "type": "llm_based",
+      "target_field": "web_info.http_responses",
+      "llm_prompt": "다음 curl 명령어의 HTTP 응답에서 보안상 중요한 정보(헤더, 서버 정보, 에러 메시지, 숨겨진 경로 등)를 추출하고 분석해주세요. 정보 이외의 불필요한 대답은 하지마"
     }
   }
 ]

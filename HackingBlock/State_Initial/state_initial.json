@@ -1,12 +1,12 @@
 {
   "mission": {
-    "goal_description": "Find the flag file on the target server.",
+    "goal_description": "Find the flag file on the local environments.",
     "objective_type": "FLAG_CAPTURE"
   },
   "session": {
     "current_user": "user",
     "current_host": "10.10.10.123",
-    "current_path": "/home/user"
+    "current_path": "/home/user/LETHACKINGBLOCK"
   },
   "knowledge_base": {
     "hosts": [

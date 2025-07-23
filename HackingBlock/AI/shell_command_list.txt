@@ -1,0 +1,36 @@
+ls_command 디렉토리의 파일 및 폴더 목록을 보여줍니다.
+cd_command 현재 작업 디렉토리를 변경합니다.
+pwd_command 현재 작업 디렉토리의 경로를 출력합니다.
+mkdir_command 새 디렉토리를 생성합니다.
+touch_command 빈 파일을 생성하거나 파일의 타임스탬프를 업데이트합니다.
+rm_command 파일이나 디렉토리를 삭제합니다.
+mv_command 파일이나 디렉토리를 이동하거나 이름을 변경합니다.
+cp_command 파일이나 디렉토리를 복사합니다.
+chmod_command 파일이나 디렉토리의 권한을 변경합니다.
+chown_command 파일이나 디렉토리의 소유자를 변경합니다.
+export_command 환경 변수를 설정합니다.
+unset_command 환경 변수를 제거합니다.
+alias_command 명령어 별칭을 설정합니다.
+source_command 스크립트 파일을 현재 셸에서 실행합니다.
+cat_command 파일의 내용을 출력합니다.
+cut_command 입력에서 특정 구분자로 필드를 잘라냅니다.
+find_command 파일 시스템에서 특정 조건의 파일을 검색합니다.
+grep_command 파일 내용이나 다른 출력에서 특정 패턴을 검색합니다.
+file_command 파일의 종류(타입)를 식별합니다.
+strings_command 바이너리 파일을 포함한 모든 파일에서 문자열을 추출합니다.
+base64_decode_command Base64로 인코딩된 내용을 디코딩합니다.
+unzip_command .zip 확장자 압축 파일을 해제합니다.
+tar_extract_command .tar 또는 .tar.gz 압축 파일을 해제합니다.
+gunzip_command .gz 확장자 압축 파일을 해제합니다.
+nmap_command 네트워크 스캔을 통해 포트, 서비스, 버전 정보 등을 확인합니다.
+gobuster_dir_command 웹사이트의 디렉토리 및 파일을 브루트포싱하여 찾습니다.
+searchsploit_command 서비스나 버전에 대한 공개된 취약점(Exploit-DB)을 검색합니다.
+john_command John the Ripper를 사용해 패스워드 해시를 크래킹합니다.
+exiftool_command 파일의 메타데이터(EXIF)를 읽습니다.
+netcat_listen_command Netcat을 이용해 특정 포트에서 연결을 기다립니다 (리스닝).
+linenum_command LinEnum 스크립트를 실행하여 권한 상승 정보를 자동 검색합니다.
+sherlock_command 사용자 이름으로 여러 소셜 미디어에서 계정을 검색합니다.
+ps_command 실행 중인 프로세스 목록을 확인합니다.
+netstat_command 네트워크 연결 상태와 포트 정보를 확인합니다.
+whoami_command 현재 사용자의 이름을 확인합니다.
+id_command 현재 사용자의 ID와 그룹 정보를 확인합니다.

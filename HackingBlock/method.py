@@ -45,11 +45,7 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
         execution_success = True
-        
-        print(f"STDOUT:\n{stdout}")
-        if stderr:
-            print(f"STDERR:\n{stderr}")
-            
+           
     except subprocess.CalledProcessError as e:
         stdout = ""
         stderr = e.stderr.strip() if e.stderr else ""
@@ -260,7 +256,7 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
         print(f"⚠️ 상태 로드 중 오류 발생: {e}. 초기 상태만 사용합니다.")
     
 
-    print(f"현재 상태\n", state_manager.state)
+   #4 print(f"현재 상태\n", state_manager.state)
 
 
 

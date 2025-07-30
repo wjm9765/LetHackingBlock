@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 import sys
+from AI.count_token import count_tokens
 
 # load.py import를 위한 경로 설정
 current_dir = Path(__file__).parent
@@ -44,8 +45,19 @@ def get_hacking_comment(command_name: str, output: str) -> str:
     if not openai.api_key:
         return "Error: OpenAI API key not configured. Please check your .env file."
     
+   
+    
+
+
+
     try:
         prompt = f"이 {command_name}으로 수행한 ouput 결과가 다음과 같을 때, 각각의 결과에 해킹에 도움이 될만한 짧은 한줄 해킹 코멘트를 달아주세요, 코멘트 이외의 불필요한 대답은 하지마\n\n{output}"
+
+        token_count = count_tokens(prompt, model="gpt-4o-mini")
+        if(token_count > 6000):
+            return f"Error: The prompt exceeds the token limit for gpt-4o model. Current token count: {token_count}. Please reduce the input size."
+    
+
 
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
@@ -83,7 +95,7 @@ def recommend_hacking_patterns(state_data: dict, shell_commands: list, shell_met
     prompt = f"""
 현재 해킹 진행 상황과 사용 가능한 명령어를 기반으로 다음 해킹 패턴을 추천해주세요.
 
-=== 현재 State 정보 (JSON) ===(history는 그동안 사용했던 명령어 목록입니다, 저장된 결과는 명령어 실행 순서에 따라 [번호]로 구분된다)
+=== 현재 state 정보 (JSON) ===(history는 그동안 사용했던 명령어 목록입니다, 저장된 결과는 명령어 실행 순서에 따라 [번호]로 구분된다)
 {state_json_str}
 
 === 사용 가능한 Shell 명령어 ===
@@ -97,9 +109,9 @@ def recommend_hacking_patterns(state_data: dict, shell_commands: list, shell_met
 
 === 요구사항 ===
 1. 총 1~3개의 패턴을 제시하세요
-2. 각 패턴은 1~4개의 명령어 블록을 사용하세요
+2. 각 패턴은 1~4개의 명령어 블록을 사용하세요 (실행 순서에 따라 명령어 나열))
 3. 위의 Shell 명령어 리스트에 있는 명령어만 사용하세요
-4. 현재 state.json 데이터를 분석하여, history(지금까지 실행했던 명령어 기록)이후에 실행하면 도움이 될 것 같은 패턴을 제시하세요
+4. 현재 state.json 데이터를 분석하여(현재 해킹 상태를 요약한 정보), history(지금까지 실행했던 명령어 기록)이후에 실행하면 도움이 될 것 같은 패턴을 제시하세요
 5. 각 패턴에 대해 목적과 예상 결과를 설명하세요
 
 === 응답 형식 ===
@@ -120,14 +132,25 @@ def recommend_hacking_patterns(state_data: dict, shell_commands: list, shell_met
 
 예시)
 1.
-- 명령어: ls_command,cat_command
+- 명령어: ls_command -> cat_command
 - 목적: 시스템 파일 구조를 파악하고 중요한 파일을 찾기
 - 예상 결과: /etc/passwd 파일을 통해 사용자 정보를 확인할 수 있음
+
 """
+
+    # 토큰 수 계산
+    token_count = count_tokens(prompt, model="gpt-4o")
+    if(token_count > 8000):
+        return f"Error: The prompt exceeds the token limit for gpt-4o model. Current token count: {token_count}. Please reduce the input size."
+    
+
+
+
+
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert cybersecurity consultant specializing in penetration testing and ethical hacking. Analyze the provided state.json data to understand the current hacking progress and recommend strategic next steps."},
                 {"role": "user", "content": prompt}

@@ -4,9 +4,9 @@
     "objective_type": "FLAG_CAPTURE"
   },
   "session": {
-    "current_user": "user",
+    "current_user": "wjm",
     "current_host": "10.10.10.123",
-    "current_path": "/home/user/LETHACKINGBLOCK"
+    "current_path": "/home/wjm/LETHACKINGBLOCK"
   },
   "knowledge_base": {
     "hosts": [

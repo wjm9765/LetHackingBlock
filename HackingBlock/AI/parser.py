@@ -3,6 +3,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import List, Union
+from AI.count_token import count_tokens
 
 # Load environment variables from .env file
 load_dotenv()
@@ -171,6 +172,13 @@ def llm_based_parser(raw_output: str, parser_info: dict) -> str:
 
     client = OpenAI(api_key=api_key)
     
+
+    token_count = count_tokens(prompt, model="gpt-4o-mini")
+    if(token_count > 8000):
+        return f"Error: The prompt exceeds the token limit for gpt-4o model. Current token count: {token_count}. Please reduce the input size."
+    
+
+
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",

@@ -4,9 +4,9 @@
     "objective_type": "FLAG_CAPTURE"
   },
   "session": {
-    "current_user": "user",
+    "current_user": "wjm",
     "current_host": "10.10.10.123",
-    "current_path": "/home/user/LETHACKINGBLOCK"
+    "current_path": "/home/wjm/LETHACKINGBLOCK"
   },
   "knowledge_base": {
     "hosts": [
@@ -19,18 +19,61 @@
         "credentials": []
       }
     ],
-    "files_of_interest": []
+    "files_of_interest": [],
+    "known_facts": [
+      "[Command #1]",
+      "drwxr-xr-x  14 wjm  staff   448  7 25 15:18 .",
+      "drwx------@  5 wjm  staff   160  7 10 17:29 ..",
+      "-rw-r--r--@  1 wjm  staff   181  7 22 00:36 .env",
+      "drwxr-xr-x@  2 wjm  staff    64  7 10 23:53 .gemini",
+      "drwxr-xr-x@ 15 wjm  staff   480  7 25 14:46 .git",
+      "-rw-r--r--@  1 wjm  staff    18  7 19 00:57 .gitignore",
+      "drwxr-xr-x@  3 wjm  staff    96  7 19 00:48 .vscode",
+      "-rw-r--r--@  1 wjm  staff    21  7 24 01:19 flag.txt",
+      "drwxr-xr-x@ 10 wjm  staff   320  7 24 00:54 HackingBlock",
+      "-rw-r--r--@  1 wjm  staff  5177  7 24 01:18 main.py",
+      "-rw-r--r--@  1 wjm  staff  6736  7 24 00:58 Pyhop_test.py",
+      "-rw-r--r--@  1 wjm  staff   683  7 22 00:36 requirements.txt",
+      "-rw-r--r--@  1 wjm  staff  1665  7 25 15:21 test.py",
+      "drwxr-xr-x@  7 wjm  staff   224  7 19 00:50 venv",
+      "[Command #2]",
+      "drwxr-xr-x  14 wjm  staff   448  7 26 23:47 .",
+      "drwx------@  5 wjm  staff   160  7 10 17:29 ..",
+      "-rw-r--r--@  1 wjm  staff   181  7 22 00:36 .env",
+      "drwxr-xr-x@  2 wjm  staff    64  7 10 23:53 .gemini",
+      "drwxr-xr-x@ 15 wjm  staff   480  7 25 14:46 .git",
+      "-rw-r--r--@  1 wjm  staff    18  7 19 00:57 .gitignore",
+      "drwxr-xr-x@  3 wjm  staff    96  7 19 00:48 .vscode",
+      "-rw-r--r--@  1 wjm  staff    21  7 24 01:19 flag.txt",
+      "drwxr-xr-x@ 10 wjm  staff   320  7 24 00:54 HackingBlock",
+      "-rw-r--r--@  1 wjm  staff  5177  7 24 01:18 main.py",
+      "-rw-r--r--@  1 wjm  staff  6736  7 24 00:58 Pyhop_test.py",
+      "-rw-r--r--@  1 wjm  staff   683  7 22 00:36 requirements.txt",
+      "-rw-r--r--@  1 wjm  staff  6240  7 27 00:22 upload_DB.py",
+      "drwxr-xr-x@  7 wjm  staff   224  7 19 00:50 venv",
+      "[Command #3]",
+      "drwxr-xr-x  14 wjm  staff   448  7 26 23:47 .",
+      "drwx------@  5 wjm  staff   160  7 10 17:29 ..",
+      "-rw-r--r--@  1 wjm  staff   181  7 22 00:36 .env",
+      "drwxr-xr-x@  2 wjm  staff    64  7 10 23:53 .gemini",
+      "drwxr-xr-x@ 15 wjm  staff   480  7 25 14:46 .git",
+      "-rw-r--r--@  1 wjm  staff    18  7 19 00:57 .gitignore",
+      "drwxr-xr-x@  3 wjm  staff    96  7 19 00:48 .vscode",
+      "-rw-r--r--@  1 wjm  staff    21  7 24 01:19 flag.txt",
+      "drwxr-xr-x@ 10 wjm  staff   320  7 24 00:54 HackingBlock",
+      "-rw-r--r--@  1 wjm  staff  5177  7 24 01:18 main.py",
+      "-rw-r--r--@  1 wjm  staff  6736  7 24 00:58 Pyhop_test.py",
+      "-rw-r--r--@  1 wjm  staff   683  7 22 00:36 requirements.txt",
+      "-rw-r--r--@  1 wjm  staff  6240  7 27 00:22 upload_DB.py",
+      "drwxr-xr-x@  7 wjm  staff   224  7 19 00:50 venv"
+    ]
   },
   "achievements": [],
   "history": {
     "last_n_commands": [
-      "grep_command -i"
-    ]
-  },
-  "search_results": {
-    "grep_matches": [
-      "[Command #1]",
-      "my password is '7765'"
+      "ls_command -al",
+      "ls_command -al",
+      "ls_command -al"
     ]
   }
 }

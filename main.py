@@ -1,5 +1,6 @@
 import sys
 import json
+import boto3
 from pathlib import Path
 
 # 프로젝트 루트를 경로에 추가하여 모듈을 임포트할 수 있도록 설정
@@ -8,7 +9,8 @@ sys.path.append(str(project_root))
 
 from HackingBlock.method import control as method_control
 from HackingBlock.AI.ai_function import control_ai_function
-from HackingBlock.load import load_json, SHELL_COMMAND_JSON_PATH
+from HackingBlock.load import USER_STATES
+from HackingBlock.load import load_command_json, COMMAND_BLOCK
 
 def display_menu():
     """메인 메뉴를 출력하는 함수"""
@@ -20,21 +22,46 @@ def display_menu():
     print("3. 현재 상태를 기반으로 패턴 추천받기")
     print("4. 종료")
     print("="*50)
+    
+def delete_user_state(user_id: str):
+    """
+    지정된 사용자 ID에 해당하는 상태 데이터를 DynamoDB에서 삭제합니다.
+    
+    Args:
+        user_id: 삭제할 사용자 상태의 ID
+    """
+    try:
+        # DynamoDB 리소스 생성
+        dynamodb = boto3.resource('dynamodb', region_name="ap-northeast-2")
+        table = dynamodb.Table(USER_STATES["table_name"])
+        
+        # 항목 삭제
+        response = table.delete_item(
+            Key={
+                USER_STATES["key_field"]: user_id
+            }
+        )
+        
+        print(f"✅ 사용자 '{user_id}'의 상태 데이터가 성공적으로 삭제되었습니다.")
+        return True
+    except Exception as e:
+        print(f"❌ 사용자 상태 삭제 중 오류 발생: {e}")
+        return False
 
 # 전역변수 선언 (main 함수 외부에 위치)
 LAST_COMMAND = None
 LAST_OUTPUT = None
 
-def execute_command():
+def execute_command(user_id: str, environment_number: str):
     """사용자로부터 명령어를 입력받아 실행하는 함수"""
     global LAST_COMMAND, LAST_OUTPUT
     
     print("\n--- 명령어 실행 ---")
     
     # 사용 가능한 명령어 목록 로드 및 출력
-    shell_commands = load_json(SHELL_COMMAND_JSON_PATH)
+    shell_commands = load_command_json("Command_Block")
     if not shell_commands:
-        print("오류: 'HackingBlock/Command/shell_command.json' 파일을 찾을 수 없습니다.")
+        print("오류: 명령어 목록을 불러오는데 실패했습니다.")
         return None, None
 
     print("사용 가능한 명령어:")
@@ -80,7 +107,9 @@ def execute_command():
         engine_type=command_block['base_block_type'],
         command_template=command_block['command_template'],
         params=params,
-        block_spec=command_block
+        block_spec=command_block,
+        user_id=user_id,
+        environment_number=environment_number
     )
     
     print("\n--- 실행 결과 ---")
@@ -92,7 +121,7 @@ def execute_command():
     
     return command_name, output
 
-def get_comment(last_command=None, last_output=None):
+def get_comment(ast_command=None, last_output=None):
     """이전 명령어 실행 결과에 대한 코멘트를 받는 함수"""
     global LAST_COMMAND, LAST_OUTPUT
     
@@ -104,37 +133,44 @@ def get_comment(last_command=None, last_output=None):
         return
         
     print("AI에게 코멘트를 요청하는 중...")
-    comment = control_ai_function("comment", LAST_COMMAND, LAST_OUTPUT)
-    
+    comment = control_ai_function("comment", LAST_COMMAND, LAST_OUTPUT, user_id=None)
     print("\n--- AI 코멘트 ---")
     print(comment)
 
-def get_pattern_recommendation():
+def get_pattern_recommendation(user_id: str):
     """현재 상태를 기반으로 패턴을 추천받는 함수"""
     print("\n--- 현재 상태 기반 패턴 추천받기 ---")
     print("AI에게 패턴 추천을 요청하는 중...")
     
     # 'pattern' 옵션으로 AI 함수 호출, 다른 인자는 필요 없음
-    recommendation = control_ai_function("pattern", "", "")
+    recommendation = control_ai_function("pattern", "", "", user_id)
     
     print("\n--- 추천 패턴 ---")
     print(recommendation)
 
 def main():
     """메인 루프를 실행하는 함수"""
+    print("사용자 아이디를 입력하세요")
+    user_id = input("User ID: ").strip()
+    print("해킹 환경 번호를 입력하세요")
+    environment_number = input("Environment Number: ").strip()
+
+
+
     while True:
         display_menu()
         choice = input("원하는 작업의 번호를 입력하세요: ").strip()
         
         if choice == '1':
-            execute_command()
+            execute_command(user_id, environment_number)
             # 결과는 전역변수에 저장되므로 반환값을 사용할 필요 없음
         elif choice == '2':
             get_comment()
-            # 전역변수를 사용하므로 인자 전달 필요 없음
         elif choice == '3':
-            get_pattern_recommendation()
+            get_pattern_recommendation(user_id)
         elif choice == '4':
+            
+            delete_user_state(user_id)
             print("프로그램을 종료합니다.")
             break
         else:

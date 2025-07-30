@@ -43,57 +43,13 @@ import json
 from pathlib import Path
 from typing import Dict, List, Union, Any
 
-# =============================================================================
-# STATE FIELD CONSTANTS - #define 스타일 필드명 정의
-# =============================================================================
-class StateFields:
-    """State JSON 구조의 모든 필드명을 상수로 정의"""
-    
-    # Top-level fields
-    MISSION = "mission"
-    SESSION = "session"
-    KNOWLEDGE_BASE = "knowledge_base"
-    ACHIEVEMENTS = "achievements"
-    HISTORY = "history"
-    
-    # mission fields
-    GOAL_DESCRIPTION = "goal_description"
-    OBJECTIVE_TYPE = "objective_type"
-    
-    # session fields
-    CURRENT_USER = "current_user"
-    CURRENT_HOST = "current_host"
-    CURRENT_PATH = "current_path"
-    
-    # knowledge_base fields
-    HOSTS = "hosts"
-    FILES_OF_INTEREST = "files_of_interest"
-    KNOWN_FACTS = "known_facts"
-    
-    # hosts object fields (within hosts list)
-    IP_ADDRESS = "ip_address"
-    HOSTNAMES = "hostnames"
-    OS = "os"
-    OPEN_PORTS = "open_ports"
-    VULNERABILITIES = "vulnerabilities"
-    CREDENTIALS = "credentials"
-    
-    # open_ports object fields (within open_ports list)
-    PORT = "port"
-    SERVICE = "service"
-    VERSION = "version"
-    
-    # vulnerabilities object fields
-    CVE_ID = "cve_id"
-    DESCRIPTION = "description"
-    
-    # credentials object fields
-    USERNAME = "username"
-    HASH = "hash"
-    SOURCE = "source"
-    
-    # history fields
-    LAST_N_COMMANDS = "last_n_commands"
+# DB에서 데이터 로드를 위한 임포트
+import sys
+
+from sqlalchemy import false
+sys.path.append(str(Path(__file__).parent.parent))
+from load import load_json, STATE_INITIAL, USER_STATES
+import boto3
 
 class State:
     """
@@ -112,31 +68,70 @@ class State:
       "vulnerabilities": [...]
     }
     """
-    def __init__(self, initial_state_path=None):
-        """기존 상태 또는 초기 상태로 초기화"""
-        self.state = self._load_state(Path(initial_state_path))
+    def __init__(self, initial_key=None):
+        """기존 상태 또는 초기 상태로 초기화
+        
+        Args:
+            initial_key: STATE_INITIAL 테이블에서 조회할 키 값 (예: "001")
+        """
+        self.state = self._load_state(STATE_INITIAL, initial_key)
         self.max_history_length = 50  # 최대 히스토리 개수
 
 
-    def set_state(self, current_state_path=None):  
-        """외부에서 로드한 상태 데이터로 현재 상태를 설정합니다.
+    def set_state(self, user_id=None):  
+        """사용자 ID에 해당하는 상태 데이터로 현재 상태를 설정합니다.
         
         Args:
-            state_data: 설정할 상태 데이터 딕셔너리
+            user_id: USER_STATES 테이블에서 조회할 사용자 ID
+            
+        Returns:
+            bool: 상태 로드 성공 여부. 실패시 False 반환
         """
-   
-        self.state = self._load_state(Path(current_state_path))
-        self.max_history_length = 50 
+        new_state = self._load_state(USER_STATES, user_id)
+        if new_state is False:  # 상태 로드 실패시
+            return False
+            
+        # 상태 로드 성공
+        self.state = new_state
+        self.max_history_length = 50
+        return True
        
         
         
 
-    def _load_state(self, state_path: Path) -> dict:
-        """Loads the state from a JSON file."""
-        if not state_path.exists():
-            raise FileNotFoundError(f"State file not found at {state_path}")
-        with open(state_path, 'r') as f:
-            return json.load(f)
+    def _load_state(self, table_info=None, key_value=None) -> Union[dict, bool]:
+        """
+        상태 데이터를 로드합니다.
+        
+        Args:
+            table_info: 테이블 정보 (예: STATE_INITIAL 또는 USER_STATES)
+            key_value: 테이블에서 검색할 키 값 (예: "001" 또는 사용자 ID)
+        
+        Returns:
+            상태 데이터 딕셔너리 또는 로드 실패시 False
+        """
+        # 이미 딕셔너리인 경우 그대로 반환
+        if isinstance(table_info, dict) and not key_value:
+            return table_info
+        
+                
+        # DB에서 데이터 로드
+        if table_info and key_value:
+            try:
+                state_data = load_json(table_info, key_value)
+                if not state_data:
+                    print(f"❌ 상태 데이터를 찾을 수 없음: {table_info['table_name']}/{key_value}")
+                    # 로드 실패 반환
+                    return False
+                return state_data
+            except Exception as e:
+                print(f"❌ 상태 로드 중 오류: {e}")
+                # 로드 실패 반환
+                return False
+        
+        # 아무것도 제공되지 않은 경우
+        print("⚠️ 테이블 정보와 키 값이 모두 제공되지 않아 빈 상태를 생성합니다")
+        return False
 
     def _add_to_history(self, command_name: str, options: str = None):
         """
@@ -227,12 +222,31 @@ class State:
         self.state["history"]["last_n_commands"] = []
         print("🗑️ Command history cleared")
 
-    def save_state(self, output_path: Path):
-        """Saves the current state to a JSON file with proper Korean encoding."""
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(self.state, f, indent=2, ensure_ascii=False)
-        print(f"State saved to {output_path}")
+    def save_state(self, user_id: str):
+        """
+        현재 상태를 DynamoDB의 UserStates 테이블에 저장합니다.
+        
+        Args:
+            user_id: 사용자 ID (테이블 키)
+        """
+        try:
+            # DynamoDB 리소스 생성
+            dynamodb = boto3.resource('dynamodb', region_name="ap-northeast-2")
+            table = dynamodb.Table(USER_STATES["table_name"])
+            
+            # 현재 상태 복사 (키 추가를 위해)
+            state_data = self.state.copy()
+            
+            # 키 추가
+            state_data[USER_STATES["key_field"]] = user_id
+            
+            # 테이블에 저장
+            response = table.put_item(Item=state_data)
+            print(f"✅ 상태가 사용자 ID '{user_id}'로 DB에 저장되었습니다")
+            return True
+        except Exception as e:
+            print(f"❌ DB에 상태 저장 중 오류: {e}")
+            return False
 
     def get_state(self) -> dict:
         """Returns the current state."""

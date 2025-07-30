@@ -13,10 +13,10 @@ sys.path.append(str(project_root))
 # load.py 임포트
 sys.path.append(str(current_dir))
 from load import (
-    STATE_INITIAL_PATH,
-    CURRENT_STATE_PATH,
-    SHELL_COMMAND_JSON_PATH,
-    load_json
+    USER_STATES,
+    STATE_INITIAL,
+    load_json,
+    load_command_json
 )
 
 from HackingBlock.AI.state_class import State
@@ -226,7 +226,7 @@ EXECUTION_ENGINES = {
 }
 
 # --- 3. 명령어 제어 함수 ---
-def control(engine_type: str, command_template: str, params: dict, block_spec: dict = None) -> str:
+def control(engine_type: str, command_template: str, params: dict, block_spec: dict = None, user_id: str = None, environment_number: str = "001") -> str:
     """
     인자로 들어온 명령어 엔진에 따라 적절한 실행 함수를 호출하는 제어 함수
     
@@ -235,23 +235,29 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
         command_template: 명령어 템플릿
         params: 명령어 파라미터
         block_spec: 블록 명세
+        user_id: 사용자 ID
+        environment_number: 환경 번호 (기본값: "001")
         
     Returns:
         str: 명령어 실행 결과 출력
     """
-    # 기존 상태 파일이 있으면 로드, 없으면 초기 상태 사용
+    # 사용자별 상태가 있으면 로드, 없으면 초기 상태 사용
     try:
-        # 기존 상태 파일 로드 시도
-        state_manager = State(STATE_INITIAL_PATH)
+        # 초기 상태로 먼저 초기화
+        state_manager = State(environment_number)
+        print(f"✅ 초기 상태 로드 성공 (environment: {environment_number})")
         
-
-        state_manager.set_state(CURRENT_STATE_PATH)
-        print("✅ 기존 상태 파일 로드 성공")
-
+        # 사용자 상태가 있으면 적용 (실패시 초기 상태 유지)
+        if user_id:
+            success = state_manager.set_state(user_id)
+            if success:
+                print(f"✅ 사용자 상태 로드 성공 (user_id: {user_id})")
+            else:
+                print(f"⚠️ 사용자 상태를 찾을 수 없음: {user_id}. 초기 상태를 사용합니다.")
     except Exception as e:
-        # 초기 상태로 시작
-        state_manager = State(STATE_INITIAL_PATH)
-        print(f"⚠️ 기존 상태 파일 로드 실패: {e}. 초기 상태에서 시작합니다")
+        # 초기 상태로만 시작
+        state_manager = State(environment_number)
+        print(f"⚠️ 상태 로드 중 오류 발생: {e}. 초기 상태만 사용합니다.")
     
 
     print(f"현재 상태\n", state_manager.state)
@@ -263,8 +269,9 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
         # 쉘 명령어 실행
         state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec)
         
-        # 상태 저장
-        state_manager.save_state(CURRENT_STATE_PATH)
+        # 상태 저장 (user_id가 제공된 경우에만)
+        if user_id:
+            state_manager.save_state(user_id)
         
         return output
     else:

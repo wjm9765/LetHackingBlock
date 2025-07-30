@@ -51,8 +51,8 @@ def rule_based_parser(raw_output: str, parser_info: dict, used_options: str = ""
     cleaned = ansi_escape.sub('', cleaned)
     
     # 3. 최대 아이템 수 제한
-    max_items = parser_info.get("max_items", 100)
-    
+    max_items = int(parser_info.get("max_items", 100))
+
     # 4. 저장 규칙 적용
     storage_rule = parser_info.get("storage_rule", "split_words")
     target_field = parser_info.get("target_field", "unknown")

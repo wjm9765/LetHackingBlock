@@ -167,6 +167,7 @@ class State:
             update_key: The key in the state to update (e.g., "knowledge_base.targets").
             options: 명령어에 사용된 옵션 (없으면 None)
         """
+        
         # 1. 명령어 히스토리에 추가 (옵션 포함)
         self._add_to_history(command_name, options)
         

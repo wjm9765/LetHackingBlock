@@ -226,7 +226,7 @@ def main():
         print("SSH 접속에 실패했습니다. 프로그램을 종료합니다.")
         return
     
-    
+
 
     while True:
         display_menu()
@@ -241,6 +241,11 @@ def main():
             get_pattern_recommendation(user_id)
         elif choice == '4':
             
+
+            ssh_client.close() 
+            print("SSH 접속을 종료합니다.")
+
+            # 사용자 상태 삭제
             delete_user_state(user_id)
             print("프로그램을 종료합니다.")
             break

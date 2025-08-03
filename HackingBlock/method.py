@@ -2,6 +2,7 @@ import subprocess
 import json
 import os
 import sys
+from typing import final
 import paramiko
 from pathlib import Path
 
@@ -14,6 +15,7 @@ sys.path.append(str(project_root))
 # load.py 임포트
 sys.path.append(str(current_dir))
 from load import (
+    USER,
     USER_STATES,
     STATE_INITIAL,
     load_json,
@@ -23,11 +25,15 @@ from load import (
 from HackingBlock.AI.state_class import State
 from HackingBlock.AI.parser import parse_output
 
+
+
+
+
 # --- 1. 실행 엔진 함수들 ---
 
 # 지금을 쉘 실행 명령어만 있지만 나중에는 웹이나 네트워크 등 다른 범용 실행 명령어가 들어올 수 있음
 
-def run_generic_shell_command(state_manager: State, command_template: str, params: dict, block_spec: dict = None, ssh_client: paramiko.SSHClient = None) -> tuple:
+def run_generic_shell_command(state_manager: State, command_template: str, params: dict, block_spec: dict = None, ssh_client: paramiko.SSHClient = None, user_id: str = None) -> tuple:
     """
     쉘 명령어를 실행하는 범용 엔진
     
@@ -51,10 +57,24 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
         # SSH 실행 (새로 추가)
         if ssh_client is None or not ssh_client.get_transport() or not ssh_client.get_transport().is_active():
             raise Exception("SSH 클라이언트가 연결되어 있지 않습니다. at run_generic_shell_command")
-            
+        
+        # 현재 작업 디렉토리 상태 확인 (cd 명령어가 아닌 경우에만)
+        command_name = block_spec.get("name", "") if block_spec else ""
+        if command_name != "cd_command" and user_id:
+            # 사용자 상태에서 현재 경로 가져오기
+            user_state = load_json(USER_STATES, user_id)
+            if user_state:
+                current_path = user_state.get("session", {}).get("current_path", "")
+                if current_path:
+                    # 현재 경로로 이동 후 명령어 실행 (cd + 명령어 형식)
+                    final_command = f"cd {current_path} && {final_command}"
+                    print(f"🔄 현재 디렉토리에서 실행: {current_path}")
+                    print(f"🔄 최종 명령어: {final_command}")
+     
+
         # SSH를 통해 명령어 실행
         stdin, stdout_channel, stderr_channel = ssh_client.exec_command(final_command)
-        
+
         # 표준 출력과 오류 읽기
         stdout = stdout_channel.read().decode('utf-8').strip()
         stderr = stderr_channel.read().decode('utf-8').strip()
@@ -298,7 +318,7 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
 
     if engine_type == 'generic_shell_command':
         # 쉘 명령어 실행
-        state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec, ssh_client)
+        state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec, ssh_client, user_id)
 
         # 상태 저장 (user_id가 제공된 경우에만)
         if user_id:

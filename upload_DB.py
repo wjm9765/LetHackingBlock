@@ -71,7 +71,7 @@ def upload_state_initial(dynamodb):
         table = create_table_if_not_exists(dynamodb, "State_initial", "hack_enviornment")
         if table:
             # 키 값 "001"로 저장
-            data["hack_enviornment"] = "1"
+            data["hack_enviornment"] = "9"
             
             response = table.put_item(Item=data)
             print(f"state_initial.json 업로드 완료: {response}")

@@ -9,6 +9,12 @@ AWS_REGION = "ap-northeast-2"  # 필요에 따라 변경
 
 # ===== 테이블 및 키 필드 정보 정의 =====
 # 테이블명을 전역변수로 설정하고 해당 테이블의 키 필드 정보 포함
+
+BANDIT_SSH = {
+    "table_name": "bandit_ssh",
+    "key_field": "level"
+}
+
 COMMAND_BLOCK = {
     "table_name": "Command_Block",
     "key_field": "command_name"

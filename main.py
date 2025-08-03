@@ -1,6 +1,7 @@
 import sys
 import json
 import boto3
+import paramiko
 from pathlib import Path
 
 # 프로젝트 루트를 경로에 추가하여 모듈을 임포트할 수 있도록 설정
@@ -9,8 +10,8 @@ sys.path.append(str(project_root))
 
 from HackingBlock.method import control as method_control
 from HackingBlock.AI.ai_function import control_ai_function
-from HackingBlock.load import USER_STATES
-from HackingBlock.load import load_command_json, COMMAND_BLOCK
+from HackingBlock.load import USER_STATES, load_json, get_dynamodb_resource
+from HackingBlock.load import load_command_json, COMMAND_BLOCK,BANDIT_SSH
 
 def display_menu():
     """메인 메뉴를 출력하는 함수"""
@@ -52,7 +53,7 @@ def delete_user_state(user_id: str):
 LAST_COMMAND = None
 LAST_OUTPUT = None
 
-def execute_command(user_id: str, environment_number: str):
+def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.SSHClient):
     """사용자로부터 명령어를 입력받아 실행하는 함수"""
     global LAST_COMMAND, LAST_OUTPUT
     
@@ -109,7 +110,8 @@ def execute_command(user_id: str, environment_number: str):
         params=params,
         block_spec=command_block,
         user_id=user_id,
-        environment_number=environment_number
+        environment_number=environment_number,
+        ssh_client=ssh_client  # SSH 클라이언트 전달
     )
     
     print("\n--- 실행 결과 ---")
@@ -147,6 +149,65 @@ def get_pattern_recommendation(user_id: str):
     
     print("\n--- 추천 패턴 ---")
     print(recommendation)
+    
+def login_ssh(level: int):
+    """
+    Bandit SSH 서버에 접속하기 위한 SSH 클라이언트를 생성합니다.
+    
+    Args:
+        level: Bandit 레벨 번호
+        
+    Returns:
+        paramiko.SSHClient: 접속된 SSH 클라이언트 또는 접속 실패 시 None
+    """
+    try:
+        
+        # load.py의 함수를 사용하여 레벨에 해당하는 접속 정보 조회
+        item = load_json(BANDIT_SSH, str(level))
+        
+        # 접속 정보가 없는 경우 처리
+        if not item:
+            print(f"❌ 레벨 {level}에 대한 접속 정보를 찾을 수 없습니다.")
+            return None
+        
+        # 접속 정보 추출
+        username = item.get("username")
+        password = item.get("password")
+        
+        if not username or not password:
+            print(f"❌ 레벨 {level}의 접속 정보가 불완전합니다.")
+            return None
+        
+        # 고정 접속 정보
+        hostname = "bandit.labs.overthewire.org"
+        port = 2220
+        
+        print(f"🔄 SSH 접속 시도 중: {username}@{hostname}:{port} (레벨 {level})")
+        
+        # SSH 클라이언트 생성
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        # 접속
+        ssh_client.connect(
+            hostname=hostname,
+            port=port,
+            username=username,
+            password=password
+        )
+        
+        print(f"✅ SSH 접속 성공: {username}@{hostname}")
+        return ssh_client
+        
+    except paramiko.AuthenticationException:
+        print("❌ 인증 실패: 사용자 이름 또는 비밀번호가 잘못되었습니다.")
+        return None
+    except paramiko.SSHException as e:
+        print(f"❌ SSH 오류: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ 오류 발생: {e}")
+        return None
 
 def main():
     """메인 루프를 실행하는 함수"""
@@ -154,7 +215,8 @@ def main():
     user_id = input("User ID: ").strip()
     print("해킹 환경 번호를 입력하세요")
     environment_number = input("Environment Number: ").strip()
-
+    
+    ssh_client = login_ssh(environment_number)
 
 
     while True:
@@ -162,7 +224,7 @@ def main():
         choice = input("원하는 작업의 번호를 입력하세요: ").strip()
         
         if choice == '1':
-            execute_command(user_id, environment_number)
+            execute_command(user_id, environment_number,ssh_client)
             # 결과는 전역변수에 저장되므로 반환값을 사용할 필요 없음
         elif choice == '2':
             get_comment()

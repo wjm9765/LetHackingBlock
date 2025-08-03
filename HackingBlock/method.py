@@ -2,6 +2,7 @@ import subprocess
 import json
 import os
 import sys
+import paramiko
 from pathlib import Path
 
 
@@ -222,7 +223,7 @@ EXECUTION_ENGINES = {
 }
 
 # --- 3. 명령어 제어 함수 ---
-def control(engine_type: str, command_template: str, params: dict, block_spec: dict = None, user_id: str = None, environment_number: str = "001") -> str:
+def control(engine_type: str, command_template: str, params: dict, block_spec: dict = None, user_id: str = None, environment_number: str = "001", ssh_client: paramiko.SSHClient = None) -> str:
     """
     인자로 들어온 명령어 엔진에 따라 적절한 실행 함수를 호출하는 제어 함수
     

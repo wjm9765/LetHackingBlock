@@ -1,8 +1,12 @@
 import sys
 import json
+
+from regex import F
 import boto3
 import paramiko
 from pathlib import Path
+
+from sqlalchemy import false
 
 # 프로젝트 루트를 경로에 추가하여 모듈을 임포트할 수 있도록 설정
 project_root = Path(__file__).resolve().parent
@@ -168,15 +172,15 @@ def login_ssh(level: int):
         # 접속 정보가 없는 경우 처리
         if not item:
             print(f"❌ 레벨 {level}에 대한 접속 정보를 찾을 수 없습니다.")
-            return None
+            return False
         
         # 접속 정보 추출
-        username = item.get("username")
+        username = item.get("id")
         password = item.get("password")
         
         if not username or not password:
             print(f"❌ 레벨 {level}의 접속 정보가 불완전합니다.")
-            return None
+            return False
         
         # 고정 접속 정보
         hostname = "bandit.labs.overthewire.org"
@@ -201,13 +205,13 @@ def login_ssh(level: int):
         
     except paramiko.AuthenticationException:
         print("❌ 인증 실패: 사용자 이름 또는 비밀번호가 잘못되었습니다.")
-        return None
+        return False
     except paramiko.SSHException as e:
         print(f"❌ SSH 오류: {e}")
-        return None
+        return False
     except Exception as e:
         print(f"❌ 오류 발생: {e}")
-        return None
+        return False
 
 def main():
     """메인 루프를 실행하는 함수"""
@@ -218,6 +222,11 @@ def main():
     
     ssh_client = login_ssh(environment_number)
 
+    if(ssh_client is False):
+        print("SSH 접속에 실패했습니다. 프로그램을 종료합니다.")
+        return
+    
+    
 
     while True:
         display_menu()

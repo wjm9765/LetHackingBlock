@@ -27,7 +27,7 @@ from HackingBlock.AI.parser import parse_output
 
 # 지금을 쉘 실행 명령어만 있지만 나중에는 웹이나 네트워크 등 다른 범용 실행 명령어가 들어올 수 있음
 
-def run_generic_shell_command(state_manager: State, command_template: str, params: dict, block_spec: dict = None) -> tuple:
+def run_generic_shell_command(state_manager: State, command_template: str, params: dict, block_spec: dict = None, ssh_client: paramiko.SSHClient = None) -> tuple:
     """
     쉘 명령어를 실행하는 범용 엔진
     
@@ -40,12 +40,35 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
     
     # 명령어 실행
     try:
-        result = subprocess.run(
-            final_command, shell=True, capture_output=True, text=True, check=True
-        )
-        stdout = result.stdout.strip()
-        stderr = result.stderr.strip()
-        execution_success = True
+        # # 로컬 실행 (주석 처리)
+        # result = subprocess.run(
+        #     final_command, shell=True, capture_output=True, text=True, check=True
+        # )
+        # stdout = result.stdout.strip()
+        # stderr = result.stderr.strip()
+        # execution_success = True
+        
+        # SSH 실행 (새로 추가)
+        if ssh_client is None or not ssh_client.get_transport() or not ssh_client.get_transport().is_active():
+            raise Exception("SSH 클라이언트가 연결되어 있지 않습니다. at run_generic_shell_command")
+            
+        # SSH를 통해 명령어 실행
+        stdin, stdout_channel, stderr_channel = ssh_client.exec_command(final_command)
+        
+        # 표준 출력과 오류 읽기
+        stdout = stdout_channel.read().decode('utf-8').strip()
+        stderr = stderr_channel.read().decode('utf-8').strip()
+        
+        # 종료 상태 확인
+        exit_status = stdout_channel.channel.recv_exit_status()
+        execution_success = (exit_status == 0)
+        
+        if execution_success:
+            print(f"STDOUT:\n{stdout}")
+            if stderr:
+                print(f"STDERR:\n{stderr}")
+        else:
+            raise Exception(f"Command failed with exit status {exit_status}")
            
     except subprocess.CalledProcessError as e:
         stdout = ""
@@ -53,7 +76,14 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
         execution_success = False
         
         print(f"COMMAND FAILED - STDERR:\n{stderr}")
+    except Exception as e:
+        stdout = ""
+        stderr = str(e)
+        execution_success = False
+        
+        print(f"COMMAND FAILED - STDERR:\n{stderr}")
     
+
     # 파서 처리
     if block_spec and "parser_info" in block_spec:
         parser_info = block_spec.get("parser_info", {})
@@ -260,12 +290,16 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
    #4 print(f"현재 상태\n", state_manager.state)
 
 
-
+    if(ssh_client is None):
+        # SSH 클라이언트가 제공되지 않으면 기본 클라이언트 사용
+        print("🔄 SSH 클라이언트가 제공되지 않았습니다.")
+        return 
+  
 
     if engine_type == 'generic_shell_command':
         # 쉘 명령어 실행
-        state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec)
-        
+        state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec, ssh_client)
+
         # 상태 저장 (user_id가 제공된 경우에만)
         if user_id:
             state_manager.save_state(user_id)

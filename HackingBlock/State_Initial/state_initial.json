@@ -1,17 +1,17 @@
 {
   "mission": {
-    "goal_description": "Find the flag file on the local environments.",
+    "goal_description": "The password for the next level is stored in a file called - located in the home directory",
     "objective_type": "FLAG_CAPTURE"
   },
   "session": {
-    "current_user": "wjm",
-    "current_host": "10.10.10.123",
-    "current_path": "/home/wjm/LETHACKINGBLOCK"
+    "current_user": "bandit1",
+    "current_host": "bandit.labs.overthewire.org",
+    "current_path": "/home/bandit1"
   },
   "knowledge_base": {
     "hosts": [
       {
-        "ip_address": "10.10.10.123",
+        "ip_address": "bandit.labs.overthewire.org",
         "hostnames": [],
         "os": null,
         "open_ports": [],

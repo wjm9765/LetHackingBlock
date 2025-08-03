@@ -100,11 +100,11 @@ def recommend_hacking_patterns(state_data: dict, shell_commands: list, shell_met
 현재 State 정보에 들어있는 goal_description
 
 === 요구사항 ===
-1. 총 1~3개의 패턴을 제시하세요
-2. 각 패턴은 1~4개의 명령어 블록을 사용하세요 (실행 순서에 따라 명령어 나열))
-3. 위의 Shell 명령어 리스트에 있는 명령어만 사용하세요
-4. 현재 state.json 데이터를 분석하여(현재 해킹 상태를 요약한 정보), history(지금까지 실행했던 명령어 기록)이후에 실행하면 도움이 될 것 같은 패턴을 제시하세요
-5. 각 패턴에 대해 목적과 예상 결과를 설명하세요
+1. 총 1~3개의 명령어 순서 패턴을 제시하세요
+2. 각 패턴은 1~4개의 명령어 블록을 사용하세요 (실행 순서에 따라 명령어 나열, 쉘에 바로 입력할 수 있는 형태로 제시)
+3. 위의 Shell 명령어 리스트에 있는 명령어만 사용하세요. 리눅스 메타 정보를 읽고 입출력에 필요한 메타 정보를 함께 제공해. 예시) "-" 파일을 읽어야 할 때 : cat ./- , flag test.txt 파일을 읽어야 할 때 : cat flag\ test.txt
+4. 현재 state.json의 goal을 분석하여(현재 해킹 상태를 요약한 정보), history(지금까지 실행했던 명령어 기록)이후에 실행하면 도움이 될 것 같은 패턴을 제시하세요
+5. 각 패턴에 대해 목적과 예상 결과를 한국어로 설명하세요
 
 === 응답 형식 ===
 1.
@@ -124,9 +124,14 @@ def recommend_hacking_patterns(state_data: dict, shell_commands: list, shell_met
 
 예시)
 1.
-- 명령어: ls_command -> cat_command
+- 명령어: [ls -al] -> [cat ./-] -> [grep "password" flag.txt]
 - 목적: 시스템 파일 구조를 파악하고 중요한 파일을 찾기
 - 예상 결과: /etc/passwd 파일을 통해 사용자 정보를 확인할 수 있음
+
+1.
+- 명령어: [whoami] -> [chmod 777 flag/ test.txt] -> [cat flag/ test.txt]
+- 목적: 메타 문자를 사용하여 공백 있는 파일의 입력을 제대로 처리하고, 권한을 변경하여 파일 내용을 읽기
+- 예상 결과: flag/test.txt 파일의 내용을 성공적으로 읽을 수 있음
 
 """
 

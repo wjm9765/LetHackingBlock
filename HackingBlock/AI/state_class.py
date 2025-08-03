@@ -46,6 +46,7 @@ from typing import Dict, List, Union, Any
 # DB에서 데이터 로드를 위한 임포트
 import sys
 
+from numpy import full
 from sqlalchemy import false
 sys.path.append(str(Path(__file__).parent.parent))
 from load import load_json, STATE_INITIAL, USER_STATES
@@ -133,20 +134,15 @@ class State:
         print("⚠️ 테이블 정보와 키 값이 모두 제공되지 않아 빈 상태를 생성합니다")
         return False
 
-    def _add_to_history(self, command_name: str, options: str = None):
+    def _add_to_history(self, final_command:str):
         """
         명령어 이름을 history에 추가 (옵션 포함)
+        final_command: 실행된 명령어 전체 문자열
         
-        Args:
-            command_name: 실행된 명령어 이름
-            options: 명령어에 사용된 옵션 (없으면 None)
         """
-        # 옵션이 있으면 명령어_옵션 형태로 저장
-        if options and options.strip():
-            full_command = f"{command_name} {options}"
-        else:
-            full_command = command_name
-        
+
+        full_command = final_command.strip()
+       
         # 히스토리에 추가
         history_list = self.state["history"]["last_n_commands"]
         history_list.append(full_command)
@@ -157,7 +153,7 @@ class State:
         
         print(f"📝 Added to history: {full_command}")
 
-    def update_state(self, command_name: str, parsed_output: list | str, update_key: str, options: str = None):
+    def update_state(self, command_name:str, final_command: str, parsed_output: list | str, update_key: str, options: str = None):
         """
         Updates the state with the output of a command and adds command to history.
         
@@ -169,7 +165,7 @@ class State:
         """
         
         # 1. 명령어 히스토리에 추가 (옵션 포함)
-        self._add_to_history(command_name, options)
+        self._add_to_history(final_command)
         
         # 2. 실제 데이터 저장
         keys = update_key.split('.')
@@ -254,7 +250,7 @@ class State:
         return self.state
     
 
-    def update_state_only_field(self, command_name: str, target_field: str, value):
+    def update_state_only_field(self, command_name: str, final_command:str,target_field: str, value):
         """
         state_only 파서 전용 state 업데이트 함수
         
@@ -266,8 +262,8 @@ class State:
         print(f"🔄 Updating state_only field: {target_field} = {value}")
         
         # 명령어 히스토리에 추가
-        self._add_to_history(command_name)
-        
+        self._add_to_history(final_command)
+
         # target_field 경로에 따라 state 업데이트
         keys = target_field.split('.')
         current_level = self.state

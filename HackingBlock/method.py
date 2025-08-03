@@ -113,8 +113,8 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
         if parser_type == "state_only":
             # state_only 파서 처리 (기존 코드)
             print("🔄 Processing state_only parser...")
-            _handle_state_only_parser(state_manager, block_spec, params, execution_success, stdout, stderr)
-            
+            _handle_state_only_parser(state_manager, final_command, block_spec, params, execution_success, stdout, stderr)
+
         elif parser_type in ["rule_based", "regex_based", "llm_based"] and execution_success:
             # 다른 타입 파서 처리 (간소화된 코드)
             print(f"🔄 Processing {parser_type} parser...")
@@ -133,7 +133,7 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
                 
                 # 결과 저장 (state_class.py의 update_state 활용)
                 #state_manager.update_state(command_name, parsed_result, target_field)
-                state_manager.update_state(command_name, parsed_result, target_field, used_options)
+                state_manager.update_state(command_name, final_command, parsed_result, target_field, used_options)
                 print(f"✅ Parsed result saved to {target_field}")
             else:
                 print(f"⚠️ Warning: target_field not specified in {parser_type} parser")
@@ -143,7 +143,7 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
     output = stdout if stdout else stderr
     return state_manager, output
 
-def _handle_state_only_parser(state_manager: State, block_spec: dict, params: dict, execution_success: bool, stdout: str, stderr: str):
+def _handle_state_only_parser(state_manager: State, final_command: str, block_spec: dict, params: dict, execution_success: bool, stdout: str, stderr: str):
     """
     state_only 파서 전용 처리 함수
     명령어 실행 성공시 실제 파라미터 값을 state에 저장
@@ -178,7 +178,7 @@ def _handle_state_only_parser(state_manager: State, block_spec: dict, params: di
     actual_value = _extract_actual_value_from_params(command_name, params, default_value)
     
     # 4. State 클래스를 통해 저장
-    state_manager.update_state_only_field(command_name, target_field, actual_value)
+    state_manager.update_state_only_field(command_name,final_command, target_field, actual_value)
     
     print(f"✅ State updated: {target_field} = {actual_value}")
 

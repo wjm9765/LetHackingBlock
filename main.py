@@ -86,7 +86,7 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     
     # 옵션 처리 (명령어에 옵션이 있는 경우)
     if "available_options" in command_block:
-        print(f"\n{command_name}의 사용 가능한 옵션:")
+        print(f"\n{command_name}의 사용 가능한 옵션 :")
         for opt, desc in command_block["available_options"].items():
             print(f"- {opt}: {desc}")
         

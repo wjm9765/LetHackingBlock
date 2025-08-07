@@ -89,6 +89,7 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
                 print(f"STDERR:\n{stderr}")
         else:
             raise Exception(f"Command failed with exit status {exit_status}")
+            return False,False
            
     except subprocess.CalledProcessError as e:
         stdout = ""
@@ -96,12 +97,15 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
         execution_success = False
         
         print(f"COMMAND FAILED - STDERR:\n{stderr}")
+        return False,False
+    
     except Exception as e:
         stdout = ""
         stderr = str(e)
         execution_success = False
-        
+    
         print(f"COMMAND FAILED - STDERR:\n{stderr}")
+        return False,False
     
 
     # 파서 처리
@@ -320,6 +324,10 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
         # 쉘 명령어 실행
         state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec, ssh_client, user_id)
 
+
+        if state_manager is False:
+            #명령어 실행 실패
+            return False
         # 상태 저장 (user_id가 제공된 경우에만)
         if user_id:
             state_manager.save_state(user_id)

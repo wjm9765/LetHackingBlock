@@ -118,6 +118,12 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
         ssh_client=ssh_client  # SSH 클라이언트 전달
     )
     
+    if output is False:
+        print("명령어 실행에 실패했습니다. here is main.py")
+        # 프론트엔드에서 이 부분을 받아서 분기 처리할 수 있도록 수정
+        return None, None
+
+
     print("\n--- 실행 결과 ---")
     print(output)
     

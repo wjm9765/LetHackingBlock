@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #000000;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: #1a1a1a;
+            border: 1px solid #333333;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .input-section h3 {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            background-color: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-field::placeholder {
+            color: #888888;
+        }
+
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .list-section h3 {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+
+        .items-container {
+            max-height: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .items-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .items-container::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 3px;
+        }
+
+        .items-container::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 3px;
+        }
+
+        .items-container::-webkit-scrollbar-thumb:hover {
+            background: #555555;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .item:hover {
+            background-color: #333333;
+        }
+
+        .item-grip {
+            width: 16px;
+            height: 16px;
+            margin-right: 12px;
+            opacity: 0.4;
+            flex-shrink: 0;
+        }
+
+        .item-content {
+            flex: 1;
+        }
+
+        .item-number {
+            color: #60a5fa;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-right: 8px;
+        }
+
+        .item-description {
+            color: #ffffff;
+            font-size: 13px;
+        }
+
+        .help-text {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #888888;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px 16px;
+            background-color: #3b82f6;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .login-button:hover {
+            background-color: #2563eb;
+        }
+
+        .login-button:active {
+            background-color: #1d4ed8;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 480px) {
+            .login-container {
+                max-width: 100%;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- 유저이름 입력 섹션 -->
+        <div class="card input-section">
+            <h3>유저이름</h3>
+            <input 
+                type="text" 
+                class="input-field" 
+                placeholder="유저이름을 입력하세요"
+                id="username"
+            >
+        </div>
+
+        <!-- 권한 목록 섹션 -->
+        <div class="card list-section">
+            <h3>권한 목록</h3>
+            <div class="items-container">
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">001</span>
+                        <span class="item-description">- 시스템 관리자 권한</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">002</span>
+                        <span class="item-description">- 사용자 데이터 접근</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">003</span>
+                        <span class="item-description">- 보고서 생성 권한</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">004</span>
+                        <span class="item-description">- 설정 변경 권한</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">005</span>
+                        <span class="item-description">- 백업 관리 권한</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">006</span>
+                        <span class="item-description">- 로그 조회 권한</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">007</span>
+                        <span class="item-description">- 사용자 관리 권한</span>
+                    </div>
+                </div>
+
+                <div class="item">
+                    <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
+                    </svg>
+                    <div class="item-content">
+                        <span class="item-number">008</span>
+                        <span class="item-description">- 데이터베이스 접근</span>
+                    </div>
+                </div>
+            </div>
+            <div class="help-text">
+                권한 목록을 확인하세요
+            </div>
+        </div>
+
+        <!-- 로그인 버튼 -->
+        <button class="login-button" onclick="handleLogin()">
+            로그인
+        </button>
+    </div>
+
+    <script>
+        function handleLogin() {
+            const username = document.getElementById('username').value;
+            if (username.trim() === '') {
+                alert('유저이름을 입력해주세요.');
+                return;
+            }
+            console.log('Username:', username);
+            alert('로그인 시도: ' + username);
+        }
+    </script>
+</body>
+</html>

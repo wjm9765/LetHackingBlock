@@ -1,3 +1,5 @@
+from nt import environ
+from pickle import GLOBAL
 import sys
 import json
 from fastapi import FastAPI
@@ -15,7 +17,9 @@ sys.path.append(str(project_root))
 from HackingBlock.method import control as method_control
 from HackingBlock.AI.ai_function import control_ai_function
 from HackingBlock.load import USER_STATES, load_json, get_dynamodb_resource
-from HackingBlock.load import load_command_json, COMMAND_BLOCK,BANDIT_SSH,
+from HackingBlock.load import load_command_json, COMMAND_BLOCK,BANDIT_SSH
+
+
 
 
 def delete_user_state(user_id: str):
@@ -47,24 +51,41 @@ def delete_user_state(user_id: str):
 LAST_COMMAND = None
 LAST_OUTPUT = None
 
-def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.SSHClient):
-    """사용자로부터 명령어를 입력받아 실행하는 함수"""
+def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.SSHClient, command_data: dict = None):
+    """
+    명령어를 실행하는 함수
+    
+    Args:
+        user_id: 사용자 ID
+        environment_number: 환경 번호
+        ssh_client: SSH 클라이언트
+        command_data: JSON 형태로 전달된 명령어 실행 정보 (명령어 이름, 파라미터 등)
+    
+    Returns:
+        tuple: (command_name, output) 또는 실패 시 (None, None)
+    """
     global LAST_COMMAND, LAST_OUTPUT
     
     print("\n--- 명령어 실행 ---")
     
-    # 사용 가능한 명령어 목록 로드 및 출력
+    # 사용 가능한 명령어 목록 로드
     shell_commands = load_command_json("Command_Block")
     if not shell_commands:
         print("오류: 명령어 목록을 불러오는데 실패했습니다.")
         return None, None
 
-    print("사용 가능한 명령어:")
-    for cmd in shell_commands:
-        print(f"- {cmd['name']}: {cmd['description']}")
+    # JSON 데이터가 없으면 기존 방식으로 입력 받기
+    if command_data is None:
+        print("사용 가능한 명령어:")
+        for cmd in shell_commands:
+            print(f"- {cmd['name']}: {cmd['description']}")
+        
+        command_name = input("실행할 명령어 이름을 입력하세요: ").strip()
+    else:
+        # JSON 데이터에서 명령어 이름 추출
+        command_name = command_data.get("command_name", "").strip()
     
-    command_name = input("실행할 명령어 이름을 입력하세요: ").strip()
-    
+    # 명령어 블록 찾기
     command_block = next((cmd for cmd in shell_commands if cmd['name'] == command_name), None)
     
     if not command_block:
@@ -74,26 +95,30 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     # 파라미터 처리
     params = {}
     
-    # 옵션 처리 (명령어에 옵션이 있는 경우)
-    if "available_options" in command_block:
-        print(f"\n{command_name}의 사용 가능한 옵션 :")
-        for opt, desc in command_block["available_options"].items():
-            print(f"- {opt}: {desc}")
+    # JSON 데이터가 있으면 해당 파라미터 사용, 없으면 입력 받기
+    if command_data and "params" in command_data:
+        params = command_data["params"]
+    else:
+        # 옵션 처리 (명령어에 옵션이 있는 경우)
+        if "available_options" in command_block:
+            print(f"\n{command_name}의 사용 가능한 옵션 :")
+            for opt, desc in command_block["available_options"].items():
+                print(f"- {opt}: {desc}")
+            
+            options_input = input("사용할 옵션을 입력하세요 (없으면 엔터): ").strip()
+            # 엔터키만 입력했으면 빈 문자열 할당
+            params["options"] = options_input
         
-        options_input = input("사용할 옵션을 입력하세요 (없으면 엔터): ").strip()
-        # 엔터키만 입력했으면 빈 문자열 할당
-        params["options"] = options_input
-    
-    # 나머지 파라미터 처리
-    template = command_block['command_template']
-    import re
-    # 중괄호 안의 파라미터 이름 추출 (정규식)
-    param_names = re.findall(r'\{([^{}]+)\}', template)
-    
-    for param_name in param_names:
-        if param_name != "options" or param_name not in params:  # 옵션은 이미 처리했으므로 건너뜀
-            param_value = input(f"'{param_name}' 파라미터 값을 입력하세요: ").strip()
-            params[param_name] = param_value
+        # 나머지 파라미터 처리
+        template = command_block['command_template']
+        import re
+        # 중괄호 안의 파라미터 이름 추출 (정규식)
+        param_names = re.findall(r'\{([^{}]+)\}', template)
+        
+        for param_name in param_names:
+            if param_name != "options" or param_name not in params:  # 옵션은 이미 처리했으므로 건너뜀
+                param_value = input(f"'{param_name}' 파라미터 값을 입력하세요: ").strip()
+                params[param_name] = param_value
 
     print(f"\n'{command_name}' 명령어 실행 중...")
     
@@ -112,7 +137,6 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
         print("명령어 실행에 실패했습니다. here is main.py")
         # 프론트엔드에서 이 부분을 받아서 분기 처리할 수 있도록 수정
         return None, None
-
 
     print("\n--- 실행 결과 ---")
     print(output)
@@ -149,6 +173,8 @@ def get_pattern_recommendation(user_id: str):
     
     print("\n--- 추천 패턴 ---")
     print(recommendation)
+
+    return recommendation
     
 def login_ssh(level: int):
     """
@@ -212,9 +238,34 @@ def login_ssh(level: int):
 
 app = FastAPI()
 
+
+
+
+
+@app.post("/api/login_ssh")
+async def login_ssh_api(level: int):
+    ssh_client = login_ssh(level)
+    if ssh_client:
+        return {"success": True, "message": "SSH 접속 성공"}
+    else:
+        return {"success": False, "message": "SSH 접속 실패"}
+
+
 @app.post("/api/execute_command")
-async def execute_command_api():
-    
+async def execute_command_api(command_block : json):
+    command_name, output = execute_command(
+        user_id=command_block.get("user_id", ""),
+        environment_number=command_block.get("environment_number", ""),
+        ssh_client=login_ssh(command_block.get("environment_number", "")),
+        command_data=command_block
+    )
+
+    return {
+        "command_name": command_name,
+        "output": output
+    }
+
+
 
 
 @app.post("/api/delete_user_state")

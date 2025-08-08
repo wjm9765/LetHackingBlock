@@ -1,14 +1,13 @@
-from nt import environ
-from pickle import GLOBAL
+import os
 import sys
 import json
-from fastapi import FastAPI
-from regex import F
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import boto3
 import paramiko
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 
-from sqlalchemy import false
 
 # 프로젝트 루트를 경로에 추가하여 모듈을 임포트할 수 있도록 설정
 project_root = Path(__file__).resolve().parent
@@ -17,10 +16,7 @@ sys.path.append(str(project_root))
 from HackingBlock.method import control as method_control
 from HackingBlock.AI.ai_function import control_ai_function
 from HackingBlock.load import USER_STATES, load_json, get_dynamodb_resource
-from HackingBlock.load import load_command_json, COMMAND_BLOCK,BANDIT_SSH
-
-
-
+from HackingBlock.load import load_command_json, COMMAND_BLOCK, BANDIT_SSH
 
 def delete_user_state(user_id: str):
     """
@@ -238,84 +234,123 @@ def login_ssh(level: int):
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500"],  # 프론트엔드 주소
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# Pydantic 모델 추가
+class CommandRequest(BaseModel):
+    user_id: str
+    environment_number: str
+    command_name: str
+    params: dict = {}
 
+class UserRequest(BaseModel):
+    user_id: str
 
+class LevelRequest(BaseModel):
+    level: int
 
+# API 엔드포인트 수정
 @app.post("/api/login_ssh")
-async def login_ssh_api(level: int):
-    ssh_client = login_ssh(level)
+async def login_ssh_api(request: LevelRequest):
+    ssh_client = login_ssh(request.level)
     if ssh_client:
+        ssh_client.close()  # 테스트 후 연결 종료
         return {"success": True, "message": "SSH 접속 성공"}
     else:
         return {"success": False, "message": "SSH 접속 실패"}
 
-
 @app.post("/api/execute_command")
-async def execute_command_api(command_block : json):
-    command_name, output = execute_command(
-        user_id=command_block.get("user_id", ""),
-        environment_number=command_block.get("environment_number", ""),
-        ssh_client=login_ssh(command_block.get("environment_number", "")),
-        command_data=command_block
-    )
+async def execute_command_api(request: CommandRequest):
+    ssh_client = login_ssh(int(request.environment_number))
+    
+    if ssh_client is False:
+        raise HTTPException(status_code=500, detail="SSH 연결 실패")
+    
+    try:
+        command_data = {
+            "command_name": request.command_name,
+            "params": request.params
+        }
+        
+        command_name, output = execute_command(
+            user_id=request.user_id,
+            environment_number=request.environment_number,
+            ssh_client=ssh_client,
+            command_data=command_data
+        )
+        
+        return {
+            "success": True,
+            "command_name": command_name,
+            "output": output
+        }
+    
+    finally:
+        if ssh_client and ssh_client is not False:
+            ssh_client.close()
 
-    return {
-        "command_name": command_name,
-        "output": output
-    }
+@app.delete("/api/delete_user_state")
+async def delete_user_state_api(request: UserRequest):
+    result = delete_user_state(request.user_id)
+    return {"success": result, "user_id": request.user_id}
 
-
-
-
-@app.post("/api/delete_user_state")
-async def delete_user_state(user_id: str):
-    """
-    사용자 상태를 삭제하는 API 엔드포인트
-    """
-    # 사용자 상태 삭제 로직
-    result = delete_user_state(user_id)
-    return {"success": result, "user_id": user_id}
-
+@app.post("/api/return_ai_pattern")
+async def return_ai_pattern_api(request: UserRequest):
+    ai_pattern = get_pattern_recommendation(request.user_id)
+    return {"ai_pattern": ai_pattern}
 
 @app.get("/api/return_environment")
 async def return_environment():
     """
     모든 환경 정보를 반환하는 API 엔드포인트
     Returns:
-        JSON 형태의 환경 목록 (level과 goal을 매칭)
+        JSON 형태의 환경 목록 (hack_environment와 goal_description을 매칭)
     """
-    # DynamoDB 리소스 얻기
-    dynamodb = get_dynamodb_resource()
-    
-    # BANDIT_SSH 테이블 접근
-    table = dynamodb.Table(BANDIT_SSH["table_name"])
-    
-    # 전체 테이블 스캔
-    response = table.scan()
-    items = response.get('Items', [])
-    
-    # 페이지네이션 처리
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response.get('Items', []))
-    
-    # level과 goal 정보만 포함하는 딕셔너리 생성
-    result = []
-    for item in items:
-        level = item.get(BANDIT_SSH["key_field"])
-        goal = item.get("goal", "")
+    try:
+        # DynamoDB 리소스 얻기
+        dynamodb = get_dynamodb_resource()
+        if not dynamodb:
+            raise HTTPException(status_code=500, detail="DynamoDB 연결 실패")
         
-        # 필요한 정보만 포함
-        result.append({
-            "level": level,
-            "goal": goal
-        })
-    
-    # 레벨 기준으로 정렬 (숫자 정렬)
-    result.sort(key=lambda x: int(x["level"]) if x["level"].isdigit() else 999)
-    
-    return {"environments": result}
+        # STATE_INITIAL 테이블 접근
+        table = dynamodb.Table("State_initial")
+        
+        # 전체 테이블 스캔
+        response = table.scan()
+        items = response.get('Items', [])
+        
+        # 페이지네이션 처리 (DynamoDB는 한 번에 1MB 제한이 있음)
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            items.extend(response.get('Items', []))
+        
+        # hack_environment와 goal_description 정보만 포함하는 딕셔너리 생성
+        result = []
+        for item in items:
+            hack_environment = item.get("hack_enviornment")
+            goal_description = item.get("mission", {}).get("goal_description", "")
+            
+            # 필요한 정보만 포함
+            result.append({
+                "hack_environment": hack_environment,
+                "goal_description": goal_description
+            })
+        
+        # hack_environment 기준으로 정렬 (숫자 정렬)
+        result.sort(key=lambda x: int(x["hack_environment"]) if str(x["hack_environment"]).isdigit() else 999)
+        
+
+       
+        return {"environments": result}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"환경 정보 로드 중 오류 발생: {str(e)}")
 
 @app.get("/api/return_commands")
 async def return_commands():
@@ -324,53 +359,32 @@ async def return_commands():
     Returns:
         JSON 형태의 명령어 목록 (command_name과 description을 매칭)
     """
-    # 명령어 목록 로드
-    commands = load_command_json("Command_Block")
-    
-    # 명령어와 설명만 포함하는 결과 생성
-    result = []
-    for command in commands:
-        command_name = command.get("name", "")
-        description = command.get("description", "")
+    try:
+        # 명령어 목록 로드
+        commands = load_command_json("Command_Block")
         
-        # 필요한 정보만 포함
-        result.append({
-            "command_name": command_name,
-            "description": description
-        })
-    
-    # 명령어 이름 기준으로 정렬
-    result.sort(key=lambda x: x["command_name"])
-    
-    return {"commands": result}
-
-@app.get("/api/return_ai_comment")
-async def return_ai_comment():
-    """
-    AI 코멘트를 반환하는 API 엔드포인트
-    Returns:
-        JSON 형태의 AI 코멘트
-    """
-    # AI 코멘트 생성 로직
-    ai_comment = get_comment()
-    return {"ai_comment": ai_comment}
-
-
-@app.post("/api/return_ai_pattern")
-async def return_ai_pattern(user_id: str):
-    """
-    AI 패턴 추천을 반환하는 API 엔드포인트
-    Returns:
-        JSON 형태의 AI 추천 패턴
-    """
-    # AI 패턴 추천 생성 로직
-    ai_pattern = get_pattern_recommendation(user_id)
-    return {"ai_pattern": ai_pattern}
-
-
-
-
-
+        if not commands:
+            raise HTTPException(status_code=500, detail="명령어 목록 로드 실패")
+        
+        # 명령어와 설명만 포함하는 결과 생성
+        result = []
+        for command in commands:
+            command_name = command.get("name", "")
+            description = command.get("description", "")
+            
+            # 필요한 정보만 포함
+            result.append({
+                "command_name": command_name,
+                "description": description
+            })
+        
+        # 명령어 이름 기준으로 정렬
+        result.sort(key=lambda x: x["command_name"])
+        
+        return {"commands": result}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"명령어 정보 로드 중 오류 발생: {str(e)}")
 # #테스트 메인 함수
 # def display_menu():
 #     """메인 메뉴를 출력하는 함수"""
@@ -426,5 +440,7 @@ async def return_ai_pattern(user_id: str):
 #         else:
 #             print("잘못된 입력입니다. 1, 2, 3, 4 중 하나를 입력하세요.")
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    import uvicorn
+    # app 객체 대신 "main:app" 문자열로 전달
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,6 +1,6 @@
 // 환경 변수 로드 (참고: 클라이언트 사이드에서는 직접 .env 파일을 로드할 수 없어 다른 방식으로 제공해야 함)
 // 실제 환경에서는 아래 변수를 HTML에서 설정하거나 서버에서 제공해야 합니다.
-const API_ENDPOINT = 'http://localhost:8000'; // 또는 process.env.API_ENDPOINT 등으로 환경에 따라 설정
+const API_ENDPOINT = 'http://127.0.0.1:8000'; // 또는 process.env.API_ENDPOINT 등으로 환경에 따라 설정
 
 /**
  * 환경 정보를 가져오는 함수
@@ -55,13 +55,10 @@ function displayEnvironments(environments) {
     
     // 각 환경에 대한 HTML 생성
     const environmentsHTML = environments.map(env => `
-        <div class="item" data-level="${env.level}">
-            <svg class="item-grip" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 5h2v2H9V5zm0 6h2v2H9v-2zm0 6h2v2H9v-2zm6-12h2v2h-2V5zm0 6h2v2h-2v-2zm0 6h2v2h-2v-2z"/>
-            </svg>
+        <div class="item" data-level="${env.hack_environment}">
             <div class="item-content">
-                <span class="item-number">${env.level}</span>
-                <span class="item-description">- ${env.goal || '설명 없음'}</span>
+                <span class="item-number">${env.hack_environment}</span>
+                <span class="item-description">${env.goal_description || '설명 없음'}</span>
             </div>
         </div>
     `).join('');

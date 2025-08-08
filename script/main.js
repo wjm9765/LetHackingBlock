@@ -2,10 +2,16 @@
  * 사용자 정보 표시 함수
  * 로컬 스토리지에서 사용자 정보를 가져와 화면에 표시
  */
+
+
+
 function displayUserInfo() {
     // 로컬 스토리지에서 사용자 이름 가져오기
     const username = localStorage.getItem('username');
+    const level = localStorage.getItem('level');
     
+    console.log('사용자 정보:', username, 'Level:', level);
+
     // 사용자 이름이 없으면 로그인 페이지로 리다이렉트
     if (!username) {
         alert('로그인이 필요합니다.');
@@ -17,6 +23,12 @@ function displayUserInfo() {
     const userDisplayElement = document.getElementById('user-display');
     if (userDisplayElement) {
         userDisplayElement.textContent = username;
+    }
+    
+    // 레벨 정보 표시
+    const levelDisplayElement = document.getElementById('level-display');
+    if (levelDisplayElement) {
+        levelDisplayElement.textContent = level || '미설정';
     }
     
     // 권한 정보 가져오기 및 표시 (선택적)
@@ -63,6 +75,7 @@ function displayPermissions(permissions) {
 function handleLogout() {
     // 로컬 스토리지에서 사용자 정보 삭제
     localStorage.removeItem('username');
+    localStorage.removeItem('level');
     localStorage.removeItem('permissions');
     
     // 로그인 페이지로 이동

@@ -12,9 +12,40 @@ body {
     overflow: hidden;
 }
 
+/* 사용자 정보 헤더 */
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333333;
+}
+
+.user-info {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.logout-btn {
+    padding: 6px 12px;
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.logout-btn:hover {
+    background-color: #b91c1c;
+}
+
 .container {
     display: flex;
-    height: 100vh;
+    height: calc(100vh - 50px); /* 헤더 높이만큼 빼기 */
 }
 
 /* 왼쪽 사이드바 (1/4 비율) */

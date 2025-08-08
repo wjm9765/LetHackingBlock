@@ -5,7 +5,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #000000;
     min-height: 100vh;
     display: flex;
@@ -104,28 +104,41 @@ body {
     background-color: #333333;
 }
 
-.item-grip {
-    width: 16px;
-    height: 16px;
-    margin-right: 12px;
-    opacity: 0.4;
-    flex-shrink: 0;
-}
-
 .item-content {
     flex: 1;
+    display: flex;
+    align-items: center;
 }
 
 .item-number {
     color: #60a5fa;
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    margin-right: 8px;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-left: 0;
+    margin-right: 12px;
+    min-width: 25px;
+    text-align: left;
+    position: relative;
+}
+
+.item-number::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 16px;
+    background-color: #555555;
 }
 
 .item-description {
     color: #ffffff;
     font-size: 13px;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, sans-serif;
+    flex: 1;
+    margin-left: 8px;
 }
 
 .help-text {

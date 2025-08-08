@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body>
+    <!-- 사용자 정보 헤더 -->
+    <div class="user-header">
+        <div class="user-info">
+            <span>사용자: <span id="user-display">로딩중...</span></span>
+            <span>레벨: <span id="level-display">-</span></span>
+        </div>
+        <button id="logout-button" class="logout-btn">로그아웃</button>
+    </div>
+    
     <div class="container">
         <!-- 왼쪽 사이드바 (1/4 비율) -->
         <div class="sidebar">
@@ -202,5 +211,8 @@
             </div>
         </div>
     </div>
+    
+    <!-- JavaScript 파일 로드 -->
+    <script src="../script/main.js"></script>
 </body>
 </html>

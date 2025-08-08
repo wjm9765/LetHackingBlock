@@ -1,6 +1,6 @@
 import sys
 import json
-
+from fastapi import FastAPI
 from regex import F
 import boto3
 import paramiko
@@ -15,19 +15,9 @@ sys.path.append(str(project_root))
 from HackingBlock.method import control as method_control
 from HackingBlock.AI.ai_function import control_ai_function
 from HackingBlock.load import USER_STATES, load_json, get_dynamodb_resource
-from HackingBlock.load import load_command_json, COMMAND_BLOCK,BANDIT_SSH
+from HackingBlock.load import load_command_json, COMMAND_BLOCK,BANDIT_SSH,
 
-def display_menu():
-    """메인 메뉴를 출력하는 함수"""
-    print("\n" + "="*50)
-    print("HackingBlock CLI")
-    print("="*50)
-    print("1. 명령어 실행")
-    print("2. 이전 명령어 실행 결과에 대한 코멘트 받기")
-    print("3. 현재 상태를 기반으로 패턴 추천받기")
-    print("4. 종료")
-    print("="*50)
-    
+
 def delete_user_state(user_id: str):
     """
     지정된 사용자 ID에 해당하는 상태 데이터를 DynamoDB에서 삭제합니다.
@@ -219,44 +209,171 @@ def login_ssh(level: int):
         print(f"❌ 오류 발생: {e}")
         return False
 
-def main():
-    """메인 루프를 실행하는 함수"""
-    print("사용자 아이디를 입력하세요")
-    user_id = input("User ID: ").strip()
-    print("해킹 환경 번호를 입력하세요")
-    environment_number = input("Environment Number: ").strip()
-    
-    ssh_client = login_ssh(environment_number)
 
-    if(ssh_client is False):
-        print("SSH 접속에 실패했습니다. 프로그램을 종료합니다.")
-        return
+app = FastAPI()
+
+@app.post("/api/execute_command")
+async def execute_command_api():
     
 
 
-    while True:
-        display_menu()
-        choice = input("원하는 작업의 번호를 입력하세요: ").strip()
+@app.post("/api/delete_user_state")
+async def delete_user_state(user_id: str):
+    """
+    사용자 상태를 삭제하는 API 엔드포인트
+    """
+    # 사용자 상태 삭제 로직
+    result = delete_user_state(user_id)
+    return {"success": result, "user_id": user_id}
+
+
+@app.get("/api/return_environment")
+async def return_environment():
+    """
+    모든 환경 정보를 반환하는 API 엔드포인트
+    Returns:
+        JSON 형태의 환경 목록 (level과 goal을 매칭)
+    """
+    # DynamoDB 리소스 얻기
+    dynamodb = get_dynamodb_resource()
+    
+    # BANDIT_SSH 테이블 접근
+    table = dynamodb.Table(BANDIT_SSH["table_name"])
+    
+    # 전체 테이블 스캔
+    response = table.scan()
+    items = response.get('Items', [])
+    
+    # 페이지네이션 처리
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response.get('Items', []))
+    
+    # level과 goal 정보만 포함하는 딕셔너리 생성
+    result = []
+    for item in items:
+        level = item.get(BANDIT_SSH["key_field"])
+        goal = item.get("goal", "")
         
-        if choice == '1':
-            execute_command(user_id, environment_number,ssh_client)
-            # 결과는 전역변수에 저장되므로 반환값을 사용할 필요 없음
-        elif choice == '2':
-            get_comment()
-        elif choice == '3':
-            get_pattern_recommendation(user_id)
-        elif choice == '4':
+        # 필요한 정보만 포함
+        result.append({
+            "level": level,
+            "goal": goal
+        })
+    
+    # 레벨 기준으로 정렬 (숫자 정렬)
+    result.sort(key=lambda x: int(x["level"]) if x["level"].isdigit() else 999)
+    
+    return {"environments": result}
+
+@app.get("/api/return_commands")
+async def return_commands():
+    """
+    모든 명령어 정보를 반환하는 API 엔드포인트
+    Returns:
+        JSON 형태의 명령어 목록 (command_name과 description을 매칭)
+    """
+    # 명령어 목록 로드
+    commands = load_command_json("Command_Block")
+    
+    # 명령어와 설명만 포함하는 결과 생성
+    result = []
+    for command in commands:
+        command_name = command.get("name", "")
+        description = command.get("description", "")
+        
+        # 필요한 정보만 포함
+        result.append({
+            "command_name": command_name,
+            "description": description
+        })
+    
+    # 명령어 이름 기준으로 정렬
+    result.sort(key=lambda x: x["command_name"])
+    
+    return {"commands": result}
+
+@app.get("/api/return_ai_comment")
+async def return_ai_comment():
+    """
+    AI 코멘트를 반환하는 API 엔드포인트
+    Returns:
+        JSON 형태의 AI 코멘트
+    """
+    # AI 코멘트 생성 로직
+    ai_comment = get_comment()
+    return {"ai_comment": ai_comment}
+
+
+@app.post("/api/return_ai_pattern")
+async def return_ai_pattern(user_id: str):
+    """
+    AI 패턴 추천을 반환하는 API 엔드포인트
+    Returns:
+        JSON 형태의 AI 추천 패턴
+    """
+    # AI 패턴 추천 생성 로직
+    ai_pattern = get_pattern_recommendation(user_id)
+    return {"ai_pattern": ai_pattern}
+
+
+
+
+
+# #테스트 메인 함수
+# def display_menu():
+#     """메인 메뉴를 출력하는 함수"""
+#     print("\n" + "="*50)
+#     print("HackingBlock CLI")
+#     print("="*50)
+#     print("1. 명령어 실행")
+#     print("2. 이전 명령어 실행 결과에 대한 코멘트 받기")
+#     print("3. 현재 상태를 기반으로 패턴 추천받기")
+#     print("4. 종료")
+#     print("="*50)
+    
+
+
+
+
+# def main():
+#     """메인 루프를 실행하는 함수"""
+#     print("사용자 아이디를 입력하세요")
+#     user_id = input("User ID: ").strip()
+#     print("해킹 환경 번호를 입력하세요")
+#     environment_number = input("Environment Number: ").strip()
+    
+#     ssh_client = login_ssh(environment_number)
+
+#     if(ssh_client is False):
+#         print("SSH 접속에 실패했습니다. 프로그램을 종료합니다.")
+#         return
+    
+
+
+#     while True:
+#         display_menu()
+#         choice = input("원하는 작업의 번호를 입력하세요: ").strip()
+        
+#         if choice == '1':
+#             execute_command(user_id, environment_number,ssh_client)
+#             # 결과는 전역변수에 저장되므로 반환값을 사용할 필요 없음
+#         elif choice == '2':
+#             get_comment()
+#         elif choice == '3':
+#             get_pattern_recommendation(user_id)
+#         elif choice == '4':
             
 
-            ssh_client.close() 
-            print("SSH 접속을 종료합니다.")
+#             ssh_client.close() 
+#             print("SSH 접속을 종료합니다.")
 
-            # 사용자 상태 삭제
-            delete_user_state(user_id)
-            print("프로그램을 종료합니다.")
-            break
-        else:
-            print("잘못된 입력입니다. 1, 2, 3, 4 중 하나를 입력하세요.")
+#             # 사용자 상태 삭제
+#             delete_user_state(user_id)
+#             print("프로그램을 종료합니다.")
+#             break
+#         else:
+#             print("잘못된 입력입니다. 1, 2, 3, 4 중 하나를 입력하세요.")
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

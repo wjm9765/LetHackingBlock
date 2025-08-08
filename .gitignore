@@ -1,4 +1,11 @@
+# 환경 변수 파일
 .env
-HackingBlock
-.gemini
-venv
+
+# 프로젝트 폴더
+HackingBlock/
+
+# AI 관련 파일
+.gemini/
+
+# 가상 환경
+venv/

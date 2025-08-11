@@ -255,6 +255,9 @@ class UserRequest(BaseModel):
 class LevelRequest(BaseModel):
     level: int
 
+class CommandSearchRequest(BaseModel):
+    search_term: str
+
 # API 엔드포인트 수정
 @app.post("/api/login_ssh")
 async def login_ssh_api(request: LevelRequest):
@@ -352,12 +355,14 @@ async def return_environment():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"환경 정보 로드 중 오류 발생: {str(e)}")
 
-@app.get("/api/return_commands")
-async def return_commands():
+@app.post("/api/return_commands")
+async def return_commands(request: CommandSearchRequest):
     """
-    모든 명령어 정보를 반환하는 API 엔드포인트
+    명령어 정보를 반환하는 API 엔드포인트
+    Args:
+        request: search_term이 "all"이면 전체 명령어, 아니면 특정 명령어 검색
     Returns:
-        JSON 형태의 명령어 목록 (command_name과 description을 매칭)
+        JSON 형태의 명령어 목록 또는 특정 명령어 정보
     """
     try:
         # 명령어 목록 로드
@@ -366,25 +371,48 @@ async def return_commands():
         if not commands:
             raise HTTPException(status_code=500, detail="명령어 목록 로드 실패")
         
-        # 명령어와 설명만 포함하는 결과 생성
-        result = []
-        for command in commands:
-            command_name = command.get("name", "")
-            description = command.get("description", "")
+        search_term = request.search_term.strip()
+        
+        # "all"인 경우 전체 명령어 목록 반환
+        if search_term.lower() == "all":
+            # 명령어와 설명만 포함하는 결과 생성
+            result = []
+            for command in commands:
+                command_name = command.get("name", "")
+                description = command.get("description", "")
+                
+                # 필요한 정보만 포함
+                result.append({
+                    "command_name": command_name,
+                    "description": description
+                })
             
-            # 필요한 정보만 포함
-            result.append({
-                "command_name": command_name,
-                "description": description
-            })
+            # 명령어 이름 기준으로 정렬
+            result.sort(key=lambda x: x["command_name"])
+            
+            return {"commands": result}
         
-        # 명령어 이름 기준으로 정렬
-        result.sort(key=lambda x: x["command_name"])
+        # 특정 명령어 검색
+        else:
+            # 해당 명령어 블록 찾기
+            command_block = next((cmd for cmd in commands if cmd.get('name') == search_term), None)
+            
+            if not command_block:
+                raise HTTPException(status_code=404, detail=f"명령어 '{search_term}'를 찾을 수 없습니다.")
+
+            print(f"명령어 '{command_block['name']}' 정보 반환")
+
+            # 전체 명령어 블록 정보 반환
+            return {"command": command_block}
         
-        return {"commands": result}
-        
+    except HTTPException:
+        # HTTPException은 그대로 다시 발생시킴
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"명령어 정보 로드 중 오류 발생: {str(e)}")
+
+
+
 # #테스트 메인 함수
 # def display_menu():
 #     """메인 메뉴를 출력하는 함수"""

@@ -473,7 +473,7 @@ body {
 
 .block-header .block-name {
     flex: 1;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -481,34 +481,44 @@ body {
 }
 
 .delete-btn {
-    background: none;
-    border: none;
-    color: #ef4444;
+    background-color: #4a4a4a;
+    border: 1px solid #5a5a5a;
+    color: #ff8080;
     cursor: pointer;
-    font-size: 12px;
-    padding: 2px 4px;
+    font-size: 10px;
+    padding: 4px 8px;
     margin-right: 4px;
     border-radius: 4px;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    min-width: 24px;
+    text-align: center;
 }
 
 .delete-btn:hover {
-    background-color: rgba(239, 68, 68, 0.2);
+    background-color: #5a5a5a;
+    border-color: #6a6a6a;
+    color: #ff6b6b;
 }
 
 .play-btn {
-    background: none;
-    border: none;
-    color: #22c55e;
+    background-color: #4a4a4a;
+    border: 1px solid #5a5a5a;
+    color: #80ff80;
     cursor: pointer;
-    font-size: 12px;
-    padding: 2px;
+    font-size: 10px;
+    padding: 4px 8px;
     border-radius: 4px;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    min-width: 24px;
+    text-align: center;
 }
 
 .play-btn:hover {
-    background-color: rgba(34, 197, 94, 0.2);
+    background-color: #5a5a5a;
+    border-color: #6a6a6a;
+    color: #6bff6b;
 }
 
 .block-content {
@@ -526,39 +536,52 @@ body {
 }
 
 .block-option,
-.block-input {
+.block-input,
+.block-variable {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
 .block-option label,
-.block-input label {
-    font-size: 10px;
+.block-input label,
+.block-variable label {
+    font-size: 12px;
     color: #aaaaaa;
     font-weight: 500;
 }
 
 .option-select,
-.param-input {
-    padding: 4px 8px;
+.param-input,
+.variable-input,
+.variable-select {
+    padding: 6px 10px;
     background-color: #1a1a1a;
     border: 1px solid #404040;
-    border-radius: 4px;
+    border-radius: 8px;
     color: #ffffff;
     font-size: 11px;
     outline: none;
+    transition: all 0.2s ease;
 }
 
+
 .option-select:focus,
-.param-input:focus {
+.param-input:focus,
+.variable-input:focus,
+.variable-select:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
-.param-input[data-value] {
-    background-color: #2a4a2a !important;
-    border-color: #22c55e;
+.param-input[data-value],
+.variable-input[data-value] {
+    color: #22c55e !important;
+    font-weight: 600;
+}
+
+.variable-select {
+    background-color: #1a1a1a;
 }
 
 .block-param {
@@ -592,6 +615,30 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 1;
+}
+
+.connection-line {
+    stroke: #22c55e;
+    stroke-width: 2;
+    fill: none;
+    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.3));
+    transition: d 0.1s ease-out;
+}
+
+.connection-line.animated {
+    stroke-dasharray: 8, 4;
+    animation: dash 1s linear infinite;
+}
+
+.connection-line:hover {
+    stroke-width: 3;
+    filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.5));
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -12;
+    }
 }
 
 .workflow-block {

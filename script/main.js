@@ -352,66 +352,67 @@ function createWorkflowBlock(commandDetails, x, y) {
         return;
     }
 
-    console.log('명령어 상세 정보 타입:', typeof(commandDetails)); // 디버깅용
+    // 실제 명령어 데이터 추출 (commandDetails.command 안에 있음)
+    const actualCommand = commandDetails.command || commandDetails;
+    console.log('실제 명령어 데이터:', actualCommand); // 디버깅용
 
     // 명령어 이름 결정 (command_name을 우선적으로 사용)
-    const commandName = commandDetails.command_name || commandDetails.name || '알 수 없는 명령어';
-    const description = commandDetails.description || '설명이 없습니다.';
-    const commandTemplate = commandDetails.command_template || '';
+    const commandName = actualCommand.command_name || actualCommand.name || '알 수 없는 명령어';
+    const description = actualCommand.description || '설명이 없습니다.';
+    const commandTemplate = actualCommand.command_template || '';
     
     console.log('추출된 정보:', { commandName, description, commandTemplate }); // 디버깅용
     
-    // 옵션 선택 HTML 생성
-    let optionsHTML = '';
-    if (commandDetails.available_options) {
-        optionsHTML = `
-            <div class="block-option">
-                <label>옵션:</label>
-                <select class="option-select">
-                    <option value="">없음</option>
-                    ${Object.entries(commandDetails.available_options).map(([key, desc]) => 
-                        `<option value="${key}" title="${desc}">${key} - ${desc}</option>`
-                    ).join('')}
-                </select>
-            </div>
-        `;
-    }
-    
-    // 템플릿에서 매개변수 추출
+    // 템플릿에서 매개변수 추출 (순서대로)
     const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
-    const inputFieldsHTML = templateParams.map(param => {
+    console.log('템플릿 파라미터:', templateParams); // 디버깅용
+    
+    // 순서대로 변수 처리를 위한 HTML 생성
+    const inputFieldsHTML = templateParams.map((param, index) => {
         const paramName = param.replace(/[{}]/g, '');
-        if (paramName === 'options') return ''; // 옵션은 별도 처리
         
-        return `
-            <div class="block-input">
-                <label>${paramName}:</label>
-                <input type="text" class="param-input" data-param="${paramName}" placeholder="${paramName} 입력...">
-            </div>
-        `;
+        // options인 경우 드롭다운 선택
+        if (paramName === 'options' && actualCommand.available_options) {
+            return `
+                <div class="block-variable" data-index="${index}" data-param="${paramName}">
+                    <label>${paramName}</label>
+                    <select class="variable-select" data-param="${paramName}" data-index="${index}">
+                        <option value="">없음</option>
+                        ${Object.entries(actualCommand.available_options).map(([key, desc]) => 
+                            `<option value="${key}" title="${desc}">${key} - ${desc}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            `;
+        } else {
+            // 일반 입력 필드
+            return `
+                <div class="block-variable" data-index="${index}" data-param="${paramName}">
+                    <label>${paramName} (${index + 1}번째):</label>
+                    <input type="text" class="variable-input" data-param="${paramName}" data-index="${index}" placeholder="${paramName} 입력...">
+                </div>
+            `;
+        }
     }).join('');
     
     // 워크플로우 블록 HTML 생성
     const blockHTML = `
-        <div class="workflow-block" id="${blockId}" style="left: ${x}px; top: ${y}px;">
+        <div class="workflow-block" id="${blockId}" style="left: ${x}px; top: ${y}px;" data-template="${commandTemplate}">
             <div class="block-header">
                 <span class="block-icon">&lt;/&gt;</span>
                 <span class="block-name">${commandName}</span>
                 <button class="delete-btn" onclick="deleteWorkflowBlock('${blockId}')">✕</button>
-                <button class="play-btn">▶️</button>
+                <button class="play-btn" onclick="executeBlock('${blockId}')">▶️</button>
             </div>
             <div class="block-content">
                 <div class="block-description">${description}</div>
-                ${optionsHTML}
                 ${inputFieldsHTML}
             </div>
             <div class="connection-point left"></div>
             <div class="connection-point right"></div>
         </div>
     `;
-    
-    console.log('생성된 HTML:', blockHTML); // 디버깅용
-    
+   
     // DOM에 추가
     workflowArea.insertAdjacentHTML('beforeend', blockHTML);
     
@@ -429,33 +430,75 @@ function createWorkflowBlock(commandDetails, x, y) {
  * 워크플로우 블록 초기화
  */
 function initializeWorkflowBlock(block) {
-    // 입력 필드 Enter 키 이벤트
-    const inputFields = block.querySelectorAll('.param-input');
+    // command_template에서 {} 패턴 추출
+    const commandTemplate = block.getAttribute('data-template') || '';
+    const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
+    
+    // 블록별 변수 저장 객체 생성 (순서대로)
+    const blockData = {
+        variables: new Array(templateParams.length).fill('') // 순서에 따라 저장
+    };
+    
+    // 블록에 데이터 저장
+    block.workflowData = blockData;
+    
+    console.log(`블록 ${block.id} 초기화 - 템플릿 파라미터:`, templateParams);
+    console.log(`블록 ${block.id} 초기화 - 변수 배열 크기:`, blockData.variables.length);
+    
+    // 일반 입력 필드 이벤트 처리
+    const inputFields = block.querySelectorAll('.variable-input');
     inputFields.forEach(input => {
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
+                const index = parseInt(input.getAttribute('data-index'));
                 const paramName = input.getAttribute('data-param');
                 const value = input.value;
-                console.log(`파라미터 ${paramName} 저장:`, value);
                 
-                // 값을 데이터 속성에 저장
+                // 순서대로 변수 배열에 저장
+                block.workflowData.variables[index] = value;
+                
+                console.log(`블록 ${block.id} - ${index}번째 변수 (${paramName}) 저장:`, value);
+                console.log(`블록 ${block.id} - 전체 변수 배열:`, block.workflowData.variables);
+                
+                // 값을 데이터 속성에 저장 (시각적 표시용)
                 input.setAttribute('data-value', value);
-                input.style.backgroundColor = '#2a4a2a'; // 저장된 것을 시각적으로 표시
+                input.style.color = '#22c55e'; // 글자를 초록색으로 변경
+                input.style.fontWeight = '600'; // 글자를 굵게
             }
         });
     });
     
-    // 옵션 선택 이벤트
-    const optionSelect = block.querySelector('.option-select');
-    if (optionSelect) {
-        optionSelect.addEventListener('change', function() {
-            console.log('선택된 옵션:', this.value);
+    // 드롭다운 선택 필드 이벤트 처리
+    const selectFields = block.querySelectorAll('.variable-select');
+    selectFields.forEach(select => {
+        select.addEventListener('change', function() {
+            const index = parseInt(select.getAttribute('data-index'));
+            const paramName = select.getAttribute('data-param');
+            const value = select.value;
+            
+            // 순서대로 변수 배열에 저장
+            block.workflowData.variables[index] = value;
+            
+            console.log(`블록 ${block.id} - ${index}번째 변수 (${paramName}) 선택:`, value);
+            console.log(`블록 ${block.id} - 전체 변수 배열:`, block.workflowData.variables);
+            
+            // 시각적 표시
+            if (value) {
+                select.style.color = '#22c55e';
+                select.style.fontWeight = '600';
+            } else {
+                select.style.color = '#ffffff';
+                select.style.fontWeight = 'normal';
+            }
         });
-    }
+    });
     
     // 드래그 기능 추가
     let isDragging = false;
     let dragOffset = { x: 0, y: 0 };
+    
+    // throttled 업데이트 함수 생성
+    const throttledUpdate = throttle(updateAllConnections, 16); // 60fps
     
     const header = block.querySelector('.block-header');
     header.addEventListener('mousedown', function(e) {
@@ -482,14 +525,145 @@ function initializeWorkflowBlock(block) {
         
         block.style.left = Math.max(0, newX) + 'px';
         block.style.top = Math.max(0, newY) + 'px';
+        
+        // 드래그 중에도 연결선 실시간 업데이트 (throttled)
+        throttledUpdate();
     });
     
     document.addEventListener('mouseup', function() {
         if (isDragging) {
             isDragging = false;
             block.style.zIndex = 2;
+            
+            // 드래그 종료 시 연결선 업데이트
+            updateAllConnections();
         }
     });
+}
+
+/**
+ * 함수 실행을 제한하는 throttle 함수
+ */
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    }
+}
+
+/**
+ * 두 블록 사이의 연결선 생성
+ */
+function createConnection(fromBlock, toBlock) {
+    const svg = document.querySelector('.connection-svg');
+    if (!svg) return null;
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.classList.add('connection-line');
+    path.setAttribute('data-from', fromBlock.id);
+    path.setAttribute('data-to', toBlock.id);
+    
+    svg.appendChild(path);
+    updateConnectionPath(path, fromBlock, toBlock);
+    
+    return path;
+}
+
+/**
+ * 연결선 경로 업데이트
+ */
+function updateConnectionPath(path, fromBlock, toBlock) {
+    const workflowArea = document.querySelector('.workflow-area');
+    const areaRect = workflowArea.getBoundingClientRect();
+    
+    // connection-point 요소들 찾기
+    const fromConnectionPoint = fromBlock.querySelector('.connection-point.right');
+    const toConnectionPoint = toBlock.querySelector('.connection-point.left');
+    
+    if (!fromConnectionPoint || !toConnectionPoint) {
+        console.warn('Connection points not found');
+        return;
+    }
+    
+    // connection-point의 정확한 위치 계산
+    const fromRect = fromConnectionPoint.getBoundingClientRect();
+    const toRect = toConnectionPoint.getBoundingClientRect();
+    
+    // 워크플로우 영역 기준 상대 좌표로 변환
+    const fromX = fromRect.left + (fromRect.width / 2) - areaRect.left;
+    const fromY = fromRect.top + (fromRect.height / 2) - areaRect.top;
+    const toX = toRect.left + (toRect.width / 2) - areaRect.left;
+    const toY = toRect.top + (toRect.height / 2) - areaRect.top;
+    
+    // 수평 거리 계산
+    const deltaX = toX - fromX;
+    const deltaY = toY - fromY;
+    
+    // 부드러운 베지어 곡선을 위한 제어점 계산
+    const controlDistance = Math.max(Math.abs(deltaX) * 0.6, 80); // 최소 80px 거리 보장
+    const controlPoint1X = fromX + controlDistance;
+    const controlPoint1Y = fromY;
+    const controlPoint2X = toX - controlDistance;
+    const controlPoint2Y = toY;
+    
+    // SVG path 데이터 생성
+    const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
+    path.setAttribute('d', pathData);
+}
+
+/**
+ * 모든 연결선 업데이트
+ */
+function updateAllConnections() {
+    const connections = document.querySelectorAll('.connection-line');
+    connections.forEach(path => {
+        const fromId = path.getAttribute('data-from');
+        const toId = path.getAttribute('data-to');
+        const fromBlock = document.getElementById(fromId);
+        const toBlock = document.getElementById(toId);
+        
+        if (fromBlock && toBlock) {
+            updateConnectionPath(path, fromBlock, toBlock);
+        } else {
+            // 블록이 삭제된 경우 연결선도 제거
+            path.remove();
+        }
+    });
+}
+
+/**
+ * 자동으로 블록들을 연결
+ */
+function autoConnectBlocks() {
+    const blocks = Array.from(document.querySelectorAll('.workflow-block'));
+    
+    // 생성 시간순으로 정렬 (ID에 타임스탬프가 포함되어 있음)
+    blocks.sort((a, b) => {
+        const aTime = parseInt(a.id.split('-').pop());
+        const bTime = parseInt(b.id.split('-').pop());
+        return aTime - bTime;
+    });
+    
+    // 연속된 블록들을 연결
+    for (let i = 0; i < blocks.length - 1; i++) {
+        const fromBlock = blocks[i];
+        const toBlock = blocks[i + 1];
+        
+        // 이미 연결되어 있는지 확인
+        const existingConnection = document.querySelector(
+            `.connection-line[data-from="${fromBlock.id}"][data-to="${toBlock.id}"]`
+        );
+        
+        if (!existingConnection) {
+            createConnection(fromBlock, toBlock);
+        }
+    }
 }
 
 /**
@@ -498,7 +672,108 @@ function initializeWorkflowBlock(block) {
 function deleteWorkflowBlock(blockId) {
     const block = document.getElementById(blockId);
     if (block) {
+        console.log(`블록 ${blockId} 삭제 - 저장된 데이터:`, block.workflowData);
+        
+        // 해당 블록과 연결된 모든 연결선 제거
+        const connections = document.querySelectorAll(
+            `.connection-line[data-from="${blockId}"], .connection-line[data-to="${blockId}"]`
+        );
+        connections.forEach(connection => connection.remove());
+        
+        // 블록 제거
         block.remove();
+        
+        // 남은 연결선들 재정렬
+        setTimeout(() => {
+            autoConnectBlocks();
+        }, 100);
+    }
+}
+
+/**
+ * 블록의 완성된 명령어 생성
+ */
+function generateCommand(block) {
+    if (!block.workflowData) {
+        console.error('블록 데이터가 없습니다.');
+        return null;
+    }
+    
+    const blockName = block.querySelector('.block-name').textContent;
+    const commandTemplate = block.getAttribute('data-template') || '';
+    const variables = block.workflowData.variables;
+    
+    // 템플릿에서 {} 패턴 추출 (순서대로)
+    const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
+    
+    // 템플릿에 변수들을 순서대로 적용
+    let finalCommand = commandTemplate;
+    
+    templateParams.forEach((param, index) => {
+        const value = variables[index] || '';
+        finalCommand = finalCommand.replace(param, value);
+    });
+    
+    // 여러 공백을 하나로 줄이고 trim
+    finalCommand = finalCommand.replace(/\s+/g, ' ').trim();
+    
+    console.log(`블록 ${block.id} 명령어 생성:`, {
+        blockName,
+        template: commandTemplate,
+        templateParams,
+        variables,
+        finalCommand
+    });
+    
+    return finalCommand;
+}
+
+/**
+ * 모든 워크플로우 블록의 데이터 조회
+ */
+function getAllWorkflowData() {
+    const blocks = document.querySelectorAll('.workflow-block');
+    const allData = [];
+    
+    blocks.forEach(block => {
+        if (block.workflowData) {
+            const blockName = block.querySelector('.block-name').textContent;
+            const command = generateCommand(block);
+            const commandTemplate = block.getAttribute('data-template') || '';
+            const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
+            
+            allData.push({
+                blockId: block.id,
+                blockName,
+                template: commandTemplate,
+                templateParams,
+                variables: block.workflowData.variables,
+                command
+            });
+        }
+    });
+    
+    console.log('전체 워크플로우 데이터:', allData);
+    return allData;
+}
+
+/**
+ * 블록 실행 함수
+ */
+function executeBlock(blockId) {
+    const block = document.getElementById(blockId);
+    if (!block) {
+        console.error('블록을 찾을 수 없습니다:', blockId);
+        return;
+    }
+    
+    const command = generateCommand(block);
+    if (command) {
+        console.log(`블록 ${blockId} 실행:`, command);
+        // 여기에 실제 명령어 실행 로직 추가
+        alert(`명령어 실행: ${command}`);
+    } else {
+        alert('명령어를 생성할 수 없습니다. 필요한 파라미터를 입력해주세요.');
     }
 }
 
@@ -507,6 +782,20 @@ function deleteWorkflowBlock(blockId) {
  */
 function initializeWorkflowArea() {
     const workflowArea = document.querySelector('.workflow-area');
+    
+    // SVG 연결선 컨테이너 생성
+    if (!workflowArea.querySelector('.connection-svg')) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.classList.add('connection-svg');
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.pointerEvents = 'none';
+        svg.style.zIndex = '1';
+        workflowArea.appendChild(svg);
+    }
     
     // 드롭 이벤트 설정
     workflowArea.addEventListener('dragover', function(e) {
@@ -529,6 +818,11 @@ function initializeWorkflowArea() {
             console.log('상세 정보 받음:', commandDetails); // 디버깅용
             if (commandDetails) {
                 createWorkflowBlock(commandDetails, x, y);
+                
+                // 새 블록 생성 후 자동 연결
+                setTimeout(() => {
+                    autoConnectBlocks();
+                }, 100);
             } else {
                 console.error('명령어 상세 정보를 가져올 수 없습니다.');
             }
@@ -543,7 +837,27 @@ function initializeWorkflowArea() {
         clearButton.addEventListener('click', function() {
             const blocks = workflowArea.querySelectorAll('.workflow-block');
             blocks.forEach(block => block.remove());
+            
+            // 모든 연결선도 제거
+            const connections = document.querySelectorAll('.connection-line');
+            connections.forEach(connection => connection.remove());
+            
             workflowArea.removeAttribute('data-initialized');
+        });
+    }
+    
+    // 전체 실행 버튼 이벤트
+    const executeAllButton = document.querySelector('.palette-controls .control-btn:first-child');
+    if (executeAllButton) {
+        executeAllButton.addEventListener('click', function() {
+            const allData = getAllWorkflowData();
+            if (allData.length === 0) {
+                alert('실행할 블록이 없습니다.');
+                return;
+            }
+            
+            console.log('전체 워크플로우 실행:', allData);
+            alert(`${allData.length}개 블록 실행 준비됨:\n${allData.map(item => item.command).join('\n')}`);
         });
     }
 }

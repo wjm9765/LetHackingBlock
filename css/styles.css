@@ -100,6 +100,9 @@ body {
     border-radius: 8px;
     cursor: grab;
     transition: all 0.2s ease;
+    position: relative;
+    max-width: 100%;
+    min-height: 50px;
 }
 
 .command-block:hover {
@@ -112,23 +115,118 @@ body {
 }
 
 .block-icon {
-    font-size: 20px;
+    font-size: 18px;
     margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    line-height: 1;
 }
 
 .block-info {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0; /* 플렉스 아이템의 축소를 허용 */
+    overflow: hidden;
 }
 
 .block-name {
     font-weight: 500;
     font-size: 14px;
-    margin-bottom: 4px;
+    line-height: 1.2;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
 }
 
 .block-desc {
     font-size: 12px;
     color: #888888;
+}
+
+/* 툴팁 스타일 */
+.block-tooltip {
+    position: fixed;
+    background-color: #1a1a1a;
+    border: 2px solid #3b82f6;
+    border-radius: 8px;
+    padding: 16px 20px;
+    width: 300px;
+    max-width: 350px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 99999;
+    pointer-events: none;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+}
+
+.block-tooltip::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 8px solid transparent;
+    border-right-color: #3b82f6;
+}
+
+.block-tooltip::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 6px solid transparent;
+    border-right-color: #1a1a1a;
+}
+
+.tooltip-content {
+    font-size: 14px;
+    color: #ffffff;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+.tooltip-content::before {
+    content: "📝 명령어 설명";
+    display: block;
+    font-size: 12px;
+    color: #3b82f6;
+    margin-bottom: 8px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 로딩 및 오류 메시지 스타일 */
+.loading, .error-message, .empty-message {
+    padding: 20px;
+    text-align: center;
+    color: #888888;
+    font-size: 14px;
+}
+
+.error-message {
+    color: #e57373;
+}
+
+.error-message button {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background-color: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
 }
 
 /* 오른쪽 메인 영역 (3/4 비율) */
@@ -343,12 +441,14 @@ body {
 
 .workflow-block {
     position: absolute;
-    width: 200px;
+    width: 250px;
+    min-height: 120px;
     background-color: #2a2a2a;
     border: 1px solid #404040;
     border-radius: 8px;
     cursor: move;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .workflow-block:hover {
@@ -375,6 +475,25 @@ body {
     flex: 1;
     font-size: 12px;
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    margin-right: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.2);
 }
 
 .play-btn {
@@ -393,7 +512,53 @@ body {
 }
 
 .block-content {
-    padding: 8px 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.block-description {
+    font-size: 11px;
+    color: #888888;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.block-option,
+.block-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.block-option label,
+.block-input label {
+    font-size: 10px;
+    color: #aaaaaa;
+    font-weight: 500;
+}
+
+.option-select,
+.param-input {
+    padding: 4px 8px;
+    background-color: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 11px;
+    outline: none;
+}
+
+.option-select:focus,
+.param-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.param-input[data-value] {
+    background-color: #2a4a2a !important;
+    border-color: #22c55e;
 }
 
 .block-param {

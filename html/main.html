@@ -20,65 +20,11 @@
         <!-- 왼쪽 사이드바 (1/4 비율) -->
         <div class="sidebar">
             <div class="search-section">
-                <input type="text" class="search-input" placeholder="명령어 블록 검색...">
+                <input type="text" class="search-input" placeholder="명령어 검색... (이름, 설명)">
             </div>
-            <div class="command-blocks">
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">📁</div>
-                    <div class="block-info">
-                        <div class="block-name">파일 읽기</div>
-                        <div class="block-desc">파일을 읽어옵니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">💾</div>
-                    <div class="block-info">
-                        <div class="block-name">파일 저장</div>
-                        <div class="block-desc">파일을 저장합니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">🔍</div>
-                    <div class="block-info">
-                        <div class="block-name">데이터 검색</div>
-                        <div class="block-desc">데이터를 검색합니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">📊</div>
-                    <div class="block-info">
-                        <div class="block-name">데이터 분석</div>
-                        <div class="block-desc">데이터를 분석합니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">🌐</div>
-                    <div class="block-info">
-                        <div class="block-name">API 호출</div>
-                        <div class="block-desc">외부 API를 호출합니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">🔄</div>
-                    <div class="block-info">
-                        <div class="block-name">데이터 변환</div>
-                        <div class="block-desc">데이터를 변환합니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">📤</div>
-                    <div class="block-info">
-                        <div class="block-name">데이터 전송</div>
-                        <div class="block-desc">데이터를 전송합니다</div>
-                    </div>
-                </div>
-                <div class="command-block" draggable="true">
-                    <div class="block-icon">⚙️</div>
-                    <div class="block-info">
-                        <div class="block-name">설정 변경</div>
-                        <div class="block-desc">시스템 설정을 변경합니다</div>
-                    </div>
-                </div>
+            <div class="command-blocks" id="command-blocks-container">
+                <!-- 여기에 백엔드에서 가져온 명령어 블록들이 동적으로 표시됩니다 -->
+                <div class="loading">명령어 블록을 불러오는 중...</div>
             </div>
         </div>
 
@@ -98,21 +44,21 @@
                     </div>
                     <div class="terminal-content">
                         <div class="terminal-line">
-                            <span class="terminal-prompt">~/username &gt;</span>
+                            <span class="terminal-prompt">~/<span id="terminal-username">user</span> &gt;</span>
                             <span class="terminal-command">파일 읽기 실행 완료</span>
                         </div>
                         <div class="terminal-line">
                             <span class="terminal-output">✓ data.txt 파일을 성공적으로 읽었습니다.</span>
                         </div>
                         <div class="terminal-line">
-                            <span class="terminal-prompt">~/username &gt;</span>
+                            <span class="terminal-prompt">~/<span id="terminal-username-2">user</span> &gt;</span>
                             <span class="terminal-command">데이터 분석 시작</span>
                         </div>
                         <div class="terminal-line">
                             <span class="terminal-output">📊 총 1,234개의 레코드를 분석했습니다.</span>
                         </div>
                         <div class="terminal-line">
-                            <span class="terminal-prompt">~/username &gt;</span>
+                            <span class="terminal-prompt">~/<span id="terminal-username-3">user</span> &gt;</span>
                             <span class="terminal-cursor">_</span>
                         </div>
                     </div>
@@ -158,54 +104,7 @@
                 </div>
                 <div class="palette-content">
                     <div class="workflow-area">
-                        <!-- 예시 워크플로우 블록들 -->
-                        <div class="workflow-block" style="left: 50px; top: 50px;">
-                            <div class="block-header">
-                                <span class="block-icon">📁</span>
-                                <span class="block-name">파일 읽기</span>
-                                <button class="play-btn">▶️</button>
-                            </div>
-                            <div class="block-content">
-                                <div class="block-param">파일: data.txt</div>
-                            </div>
-                            <div class="connection-point right"></div>
-                        </div>
-
-                        <div class="workflow-block" style="left: 300px; top: 50px;">
-                            <div class="block-header">
-                                <span class="block-icon">📊</span>
-                                <span class="block-name">데이터 분석</span>
-                                <button class="play-btn">▶️</button>
-                            </div>
-                            <div class="block-content">
-                                <div class="block-param">분석 타입: 통계</div>
-                            </div>
-                            <div class="connection-point left"></div>
-                            <div class="connection-point right"></div>
-                        </div>
-
-                        <div class="workflow-block" style="left: 550px; top: 50px;">
-                            <div class="block-header">
-                                <span class="block-icon">💾</span>
-                                <span class="block-name">파일 저장</span>
-                                <button class="play-btn">▶️</button>
-                            </div>
-                            <div class="block-content">
-                                <div class="block-param">출력: result.json</div>
-                            </div>
-                            <div class="connection-point left"></div>
-                        </div>
-
-                        <!-- 연결선들 -->
-                        <svg class="connection-lines">
-                            <line x1="170" y1="75" x2="280" y2="75" stroke="#4ade80" stroke-width="2" marker-end="url(#arrowhead)"/>
-                            <line x1="420" y1="75" x2="530" y2="75" stroke="#4ade80" stroke-width="2" marker-end="url(#arrowhead)"/>
-                            <defs>
-                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                    <polygon points="0 0, 10 3.5, 0 7" fill="#4ade80"/>
-                                </marker>
-                            </defs>
-                        </svg>
+                        <!-- 드래그된 명령어 블록들이 여기에 표시됩니다 -->
                     </div>
                 </div>
             </div>

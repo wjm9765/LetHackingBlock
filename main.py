@@ -80,7 +80,7 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     shell_commands = load_command_json("Command_Block")
     if not shell_commands:
         print("오류: 명령어 목록을 불러오는데 실패했습니다.")
-        return None, None
+        return None, None, False
 
     # JSON 데이터가 없으면 기존 방식으로 입력 받기
     if command_data is None:
@@ -98,8 +98,8 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     
     if not command_block:
         print(f"오류: '{command_name}' 명령어를 찾을 수 없습니다.")
-        return None, None
-    
+        return None, None, False
+
     # 파라미터 처리
     params = {}
     
@@ -144,7 +144,7 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     if output is False:
         print("명령어 실행에 실패했습니다. here is main.py")
         # 프론트엔드에서 이 부분을 받아서 분기 처리할 수 있도록 수정
-        return None, None
+        return None, None , False
 
     print("\n--- 실행 결과 ---")
     print(output)
@@ -153,23 +153,7 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     LAST_COMMAND = command_name
     LAST_OUTPUT = output
     
-    return command_name, output
-
-def get_comment(ast_command=None, last_output=None):
-    """이전 명령어 실행 결과에 대한 코멘트를 받는 함수"""
-    global LAST_COMMAND, LAST_OUTPUT
-    
-    print("\n--- 이전 결과에 대한 코멘트 받기 ---")
-    
-    # 함수 인자 대신 전역변수 사용
-    if not LAST_COMMAND or not LAST_OUTPUT:
-        print("오류: 명령어를 최소 1번 실행해야 합니다.")
-        return
-        
-    print("AI에게 코멘트를 요청하는 중...")
-    comment = control_ai_function("comment", LAST_COMMAND, LAST_OUTPUT, user_id=None)
-    print("\n--- AI 코멘트 ---")
-    print(comment)
+    return command_name, output, True
 
 def get_pattern_recommendation(user_id: str):
     """현재 상태를 기반으로 패턴을 추천받는 함수"""
@@ -244,6 +228,8 @@ def login_ssh(level: int):
         return False
 
 
+
+# FastAPI 애플리케이션 생성
 app = FastAPI()
 
 app.add_middleware(
@@ -303,7 +289,7 @@ async def execute_command_api(request: CommandRequest):
             "params": request.params
         }
         
-        command_name, output = execute_command(
+        command_name, output , success = execute_command(
             user_id=request.user_id,
             environment_number=request.environment_number,
             ssh_client=SSH_CLIENT,  # 전역 SSH 클라이언트 사용
@@ -311,8 +297,10 @@ async def execute_command_api(request: CommandRequest):
         )
         
         if command_name is None or output is None:
-            raise HTTPException(status_code=400, detail="명령어 실행에 실패했습니다.")
-        
+            if success is False:
+                print("명령어 실행에 실패했습니다. excute_command_api")
+                raise HTTPException(status_code=400, success=False, detail="명령어 실행에 실패했습니다.")
+
         print(f"실행결과 at fastapi: {output}")
 
 
@@ -335,6 +323,29 @@ async def delete_user_state_api(request: UserRequest):
 async def return_ai_pattern_api(request: UserRequest):
     ai_pattern = get_pattern_recommendation(request.user_id)
     return {"ai_pattern": ai_pattern}
+
+@app.get("/api/return_ai_comment")
+async def return_ai_comment_api():
+    """
+    이전 명령어 실행 결과에 대한 AI 코멘트를 반환하는 API 엔드포인트
+    Returns:
+        JSON 형태의 AI 코멘트
+    """
+    global LAST_COMMAND, LAST_OUTPUT
+    
+    if not LAST_COMMAND or not LAST_OUTPUT:
+        print("이전 명령어가 없습니다. 최소 1번 명령어를 실행해야 합니다.")
+        comment = "명령어를 최소 1번 실행해야 합니다. 또는 실행한 명령어 결과가 없습니다."
+        return {"ai_comment": comment}
+
+    try:
+        comment = control_ai_function("comment", LAST_COMMAND, LAST_OUTPUT, user_id=None)
+        print(f"AI 코멘트 생성 결과: {comment}")
+
+        return {"ai_comment": comment}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 코멘트 생성 중 오류 발생: {str(e)}")
+
 
 @app.get("/api/return_environment")
 async def return_environment():

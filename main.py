@@ -326,21 +326,6 @@ async def execute_command_api(request: CommandRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"명령어 실행 중 오류 발생: {str(e)}")
 
-# SSH 연결 종료를 위한 새로운 엔드포인트 추가 (선택적)
-@app.post("/api/disconnect_ssh")
-async def disconnect_ssh_api():
-    global SSH_CLIENT
-    
-    if SSH_CLIENT and SSH_CLIENT is not False:
-        try:
-            SSH_CLIENT.close()
-            SSH_CLIENT = None
-            return {"success": True, "message": "SSH 연결이 종료되었습니다."}
-        except Exception as e:
-            return {"success": False, "message": f"SSH 연결 종료 중 오류: {str(e)}"}
-    else:
-        return {"success": False, "message": "활성화된 SSH 연결이 없습니다."}
-
 @app.delete("/api/delete_user_state")
 async def delete_user_state_api(request: UserRequest):
     result = delete_user_state(request.user_id)

@@ -25,7 +25,18 @@ def delete_user_state(user_id: str):
     Args:
         user_id: 삭제할 사용자 상태의 ID
     """
+    global SSH_CLIENT  # 전역 변수 사용 선언
+    
     try:
+        # SSH 연결이 있으면 종료
+        if SSH_CLIENT and SSH_CLIENT is not False:
+            try:
+                SSH_CLIENT.close()
+                SSH_CLIENT = None
+                print(f"✅ SSH 연결이 종료되었습니다.")
+            except Exception as ssh_error:
+                print(f"⚠️ SSH 연결 종료 중 오류: {ssh_error}")
+        
         # DynamoDB 리소스 생성
         dynamodb = boto3.resource('dynamodb', region_name="ap-northeast-2")
         table = dynamodb.Table(USER_STATES["table_name"])
@@ -46,6 +57,7 @@ def delete_user_state(user_id: str):
 # 전역변수 선언 (main 함수 외부에 위치)
 LAST_COMMAND = None
 LAST_OUTPUT = None
+SSH_CLIENT = None  # SSH 클라이언트 전역 변수 추가
 
 def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.SSHClient, command_data: dict = None):
     """
@@ -261,19 +273,29 @@ class CommandSearchRequest(BaseModel):
 # API 엔드포인트 수정
 @app.post("/api/login_ssh")
 async def login_ssh_api(request: LevelRequest):
-    ssh_client = login_ssh(request.level)
-    if ssh_client:
-        ssh_client.close()  # 테스트 후 연결 종료
+    global SSH_CLIENT  # 전역 변수 사용
+    
+    # 기존 SSH 연결이 있다면 종료
+    if SSH_CLIENT and SSH_CLIENT is not False:
+        try:
+            SSH_CLIENT.close()
+        except:
+            pass
+    
+    SSH_CLIENT = login_ssh(request.level)
+    
+    if SSH_CLIENT:
         return {"success": True, "message": "SSH 접속 성공"}
     else:
         return {"success": False, "message": "SSH 접속 실패"}
 
 @app.post("/api/execute_command")
 async def execute_command_api(request: CommandRequest):
-    ssh_client = login_ssh(int(request.environment_number))
+    global SSH_CLIENT  # 전역 변수 사용
     
-    if ssh_client is False:
-        raise HTTPException(status_code=500, detail="SSH 연결 실패")
+    # 전역 SSH 클라이언트가 없거나 연결이 끊어진 경우 에러 반환
+    if SSH_CLIENT is None or SSH_CLIENT is False:
+        raise HTTPException(status_code=400, detail="SSH 연결이 필요합니다. 먼저 /api/login_ssh를 호출하세요.")
     
     try:
         command_data = {
@@ -284,19 +306,40 @@ async def execute_command_api(request: CommandRequest):
         command_name, output = execute_command(
             user_id=request.user_id,
             environment_number=request.environment_number,
-            ssh_client=ssh_client,
+            ssh_client=SSH_CLIENT,  # 전역 SSH 클라이언트 사용
             command_data=command_data
         )
         
+        if command_name is None or output is None:
+            raise HTTPException(status_code=400, detail="명령어 실행에 실패했습니다.")
+        
+        print(f"실행결과 at fastapi: {output}")
+
+
+
         return {
             "success": True,
             "command_name": command_name,
             "output": output
         }
     
-    finally:
-        if ssh_client and ssh_client is not False:
-            ssh_client.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"명령어 실행 중 오류 발생: {str(e)}")
+
+# SSH 연결 종료를 위한 새로운 엔드포인트 추가 (선택적)
+@app.post("/api/disconnect_ssh")
+async def disconnect_ssh_api():
+    global SSH_CLIENT
+    
+    if SSH_CLIENT and SSH_CLIENT is not False:
+        try:
+            SSH_CLIENT.close()
+            SSH_CLIENT = None
+            return {"success": True, "message": "SSH 연결이 종료되었습니다."}
+        except Exception as e:
+            return {"success": False, "message": f"SSH 연결 종료 중 오류: {str(e)}"}
+    else:
+        return {"success": False, "message": "활성화된 SSH 연결이 없습니다."}
 
 @app.delete("/api/delete_user_state")
 async def delete_user_state_api(request: UserRequest):

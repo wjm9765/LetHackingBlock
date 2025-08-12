@@ -939,23 +939,35 @@ async function executeBlock(blockId) {
             })
         });
         
-        if (!response.ok) {
-            throw new Error(`API 응답 오류: ${response.status}`);
+        // 응답이 JSON 형태인지 확인
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`서버에서 올바르지 않은 응답 형식을 반환했습니다: ${response.status}`);
         }
         
         const result = await response.json();
-        console.log('명령어 실행 결과:', result.output);
+        console.log('명령어 실행 결과:', result);
 
-        // None, None이 반환된 경우 처리 (파이썬에서 None은 JavaScript에서 null로 변환됨)
-        if (result.output === null || result.output === "None" || 
-            (typeof result.output === 'string' && result.output.trim() === '')) {
+        // success가 false인 경우 처리 (HTTP 상태 코드와 관계없이)
+        if (result.success === false) {
             addTerminalOutput('명령어 실행 실패 ! 명령어 조합을 고려해보세요', false, commandName);
-        } else if (result.success) {
+            console.log('명령어 실행 실패:', result.detail || result.message || '상세 정보 없음');
+        }
+        // 성공인 경우 처리
+        else if (result.success === true) {
             // 성공 시 output을 터미널에 출력 (명령어 이름 포함)
             addTerminalOutput(result.output || '명령어가 성공적으로 실행되었습니다.', true, commandName);
-        } else {
-            // 실패 시 오류 메시지 출력 (명령어 이름 포함)
-            addTerminalOutput(result.output || '명령어 실행에 실패했습니다.', false, commandName);
+        }
+        // success 필드가 없거나 예상치 못한 응답 형태인 경우
+        else {
+            // None, None이 반환된 경우 처리 (파이썬에서 None은 JavaScript에서 null로 변환됨)
+            if (result.output === null || result.output === "None" || 
+                (typeof result.output === 'string' && result.output.trim() === '')) {
+                addTerminalOutput('명령어 실행 실패 ! 명령어 조합을 고려해보세요', false, commandName);
+            } else {
+                // 일반적인 실패 처리
+                addTerminalOutput(result.output || '명령어 실행에 실패했습니다.', false, commandName);
+            }
         }
         
     } catch (error) {
@@ -1121,6 +1133,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 워크플로우 영역 초기화
     initializeWorkflowArea();
+    
+    // AI 조언 기능 초기화 (ai.js에서 제공)
+    // setTimeout을 사용하여 ai.js가 완전히 로드된 후 초기화
+    setTimeout(() => {
+        if (typeof window.initializeAIAdvice === 'function') {
+            window.initializeAIAdvice();
+        } else {
+            console.warn('AI 조언 기능이 아직 로드되지 않았습니다.');
+        }
+    }, 200);
     
     // 로그아웃 버튼 이벤트 리스너 등록
     const logoutButton = document.getElementById('logout-button');

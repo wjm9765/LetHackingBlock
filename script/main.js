@@ -20,6 +20,9 @@ function displayUserInfo() {
         return;
     }
     
+    // SSH 로그인 API 호출 (main.html 첫 접속 시)
+    loginSSH(parseInt(level) || 1);
+    
     // 사용자 이름 표시
     const userDisplayElement = document.getElementById('user-display');
     if (userDisplayElement) {
@@ -48,6 +51,41 @@ function displayUserInfo() {
 }
 
 /**
+ * SSH 로그인 API 호출 함수
+ * main.html 첫 접속 시 호출
+ */
+async function loginSSH(level) {
+    try {
+        console.log('SSH 로그인 요청:', level); // 디버깅용
+        
+        const response = await fetch(`${API_ENDPOINT}/api/login_ssh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                level: level
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`SSH 로그인 API 응답 오류: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('SSH 로그인 응답:', data); // 디버깅용
+        
+        // SSH 로그인 성공 시 터미널에 메시지 출력
+        addTerminalOutput('해킹 환경 접속 성공', true);
+        
+    } catch (error) {
+        console.error('SSH 로그인 실패:', error);
+        // SSH 로그인 실패 시 터미널에 오류 메시지 출력
+        addTerminalOutput('해킹 환경 접속 실패', false);
+    }
+}
+
+/**
  * 터미널에서 사용자 이름 업데이트
  */
 function updateTerminalUsername(username) {
@@ -55,6 +93,77 @@ function updateTerminalUsername(username) {
     terminalUsernames.forEach(element => {
         element.textContent = username;
     });
+}
+
+/**
+ * 터미널에 명령어 출력 추가
+ */
+function addTerminalOutput(message, isSuccess = true, commandName = null) {
+    const terminalContent = document.getElementById('terminal-content');
+    if (!terminalContent) return;
+    
+    const username = localStorage.getItem('username') || 'user';
+    
+    // 기존 커서 제거
+    const existingCursor = terminalContent.querySelector('.terminal-cursor');
+    if (existingCursor) {
+        existingCursor.parentElement.remove();
+    }
+    
+    // SSH 접속 관련 메시지인지 확인
+    const isSSHMessage = message.includes('해킹 환경 접속');
+    
+    if (isSSHMessage) {
+        // SSH 접속 메시지인 경우 기존 방식으로 표시
+        const newLine = document.createElement('div');
+        newLine.className = 'terminal-line';
+        newLine.innerHTML = `
+            <span class="terminal-prompt">~/${username} &gt;</span>
+            <span class="terminal-command">${message}</span>
+        `;
+        
+        const outputLine = document.createElement('div');
+        outputLine.className = 'terminal-line';
+        outputLine.innerHTML = `
+            <span class="terminal-output">${isSuccess ? '✓' : '✗'} ${message}</span>
+        `;
+        
+        terminalContent.appendChild(newLine);
+        terminalContent.appendChild(outputLine);
+    } else {
+        // 명령어 실행인 경우 명령어 이름 먼저 표시
+        if (commandName) {
+            const commandLine = document.createElement('div');
+            commandLine.className = 'terminal-line';
+            commandLine.innerHTML = `
+                <span class="terminal-prompt">~/${username} &gt;</span>
+                <span class="terminal-command">${commandName}</span>
+            `;
+            terminalContent.appendChild(commandLine);
+        }
+        
+        // 줄바꿈을 처리하여 output 표시
+        const lines = message.split('\n');
+        lines.forEach(line => {
+            const outputLine = document.createElement('div');
+            outputLine.className = 'terminal-line';
+            outputLine.innerHTML = `<span class="terminal-output">${line}</span>`;
+            terminalContent.appendChild(outputLine);
+        });
+    }
+    
+    // 새 커서 라인 추가
+    const cursorLine = document.createElement('div');
+    cursorLine.className = 'terminal-line';
+    cursorLine.innerHTML = `
+        <span class="terminal-prompt">~/${username} &gt;</span>
+        <span class="terminal-cursor">_</span>
+    `;
+    
+    terminalContent.appendChild(cursorLine);
+    
+    // 스크롤을 맨 아래로
+    terminalContent.scrollTop = terminalContent.scrollHeight;
 }
 
 /**
@@ -452,9 +561,9 @@ function initializeWorkflowBlock(block) {
             if (e.key === 'Enter') {
                 const index = parseInt(input.getAttribute('data-index'));
                 const paramName = input.getAttribute('data-param');
-                const value = input.value;
+                const value = input.value; // 빈 문자열도 그대로 저장
                 
-                // 순서대로 변수 배열에 저장
+                // 순서대로 변수 배열에 저장 (빈 문자열 포함)
                 block.workflowData.variables[index] = value;
                 
                 console.log(`블록 ${block.id} - ${index}번째 변수 (${paramName}) 저장:`, value);
@@ -462,8 +571,18 @@ function initializeWorkflowBlock(block) {
                 
                 // 값을 데이터 속성에 저장 (시각적 표시용)
                 input.setAttribute('data-value', value);
-                input.style.color = '#22c55e'; // 글자를 초록색으로 변경
-                input.style.fontWeight = '600'; // 글자를 굵게
+                
+                if (value === '') {
+                    // 빈 문자열인 경우 어두운 연두색 배경
+                    input.style.backgroundColor = '#2d4a2b'; // 어두운 연두색
+                    input.style.color = '#ffffff'; // 글자색은 흰색
+                    input.style.fontWeight = '600';
+                } else {
+                    // 값이 있는 경우 기존 스타일
+                    input.style.backgroundColor = ''; // 배경색 초기화
+                    input.style.color = '#22c55e'; // 글자를 초록색으로 변경
+                    input.style.fontWeight = '600'; // 글자를 굵게
+                }
             }
         });
     });
@@ -760,20 +879,88 @@ function getAllWorkflowData() {
 /**
  * 블록 실행 함수
  */
-function executeBlock(blockId) {
+async function executeBlock(blockId) {
     const block = document.getElementById(blockId);
     if (!block) {
         console.error('블록을 찾을 수 없습니다:', blockId);
         return;
     }
     
-    const command = generateCommand(block);
-    if (command) {
-        console.log(`블록 ${blockId} 실행:`, command);
-        // 여기에 실제 명령어 실행 로직 추가
-        alert(`명령어 실행: ${command}`);
-    } else {
-        alert('명령어를 생성할 수 없습니다. 필요한 파라미터를 입력해주세요.');
+    // 사용자 정보 가져오기
+    const username = localStorage.getItem('username');
+    const level = localStorage.getItem('level');
+    
+    if (!username || !level) {
+        addTerminalOutput('사용자 정보가 없습니다. 다시 로그인해주세요.', false);
+        return;
+    }
+    
+    // 블록에서 명령어 정보 추출
+    const commandName = block.querySelector('.block-name').textContent;
+    const commandTemplate = block.getAttribute('data-template') || '';
+    
+    if (!block.workflowData || !block.workflowData.variables) {
+        addTerminalOutput('블록 데이터가 없습니다.', false);
+        return;
+    }
+    
+    // 템플릿 파라미터와 변수를 매칭하여 params 객체 생성
+    const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
+    const params = {};
+    
+    templateParams.forEach((param, index) => {
+        const paramName = param.replace(/[{}]/g, '');
+        const value = block.workflowData.variables[index];
+        // 값이 정의되어 있으면 (빈 문자열 포함) params에 추가
+        if (value !== undefined) {
+            params[paramName] = value;
+        }
+    });
+    
+    console.log(`블록 ${blockId} 실행 준비:`, {
+        commandName,
+        username,
+        level,
+        params
+    });
+    
+    try {
+        // 백엔드 API 호출
+        const response = await fetch(`${API_ENDPOINT}/api/execute_command`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: username,
+                environment_number: level,
+                command_name: commandName,
+                params: params
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API 응답 오류: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('명령어 실행 결과:', result.output);
+
+        // None, None이 반환된 경우 처리 (파이썬에서 None은 JavaScript에서 null로 변환됨)
+        if (result.output === null || result.output === "None" || 
+            (typeof result.output === 'string' && result.output.trim() === '')) {
+            addTerminalOutput('명령어 실행 실패 ! 명령어 조합을 고려해보세요', false, commandName);
+        } else if (result.success) {
+            // 성공 시 output을 터미널에 출력 (명령어 이름 포함)
+            addTerminalOutput(result.output || '명령어가 성공적으로 실행되었습니다.', true, commandName);
+        } else {
+            // 실패 시 오류 메시지 출력 (명령어 이름 포함)
+            addTerminalOutput(result.output || '명령어 실행에 실패했습니다.', false, commandName);
+        }
+        
+    } catch (error) {
+        console.error('명령어 실행 API 호출 실패:', error);
+        addTerminalOutput(`명령어 실행 실패: ${error.message}`, false, commandName);
     }
 }
 
@@ -831,8 +1018,8 @@ function initializeWorkflowArea() {
         });
     });
     
-    // 초기화 버튼 이벤트
-    const clearButton = document.querySelector('.palette-controls .control-btn:last-child');
+    // 초기화 버튼 이벤트 (이제 유일한 버튼이므로 first-child로 선택)
+    const clearButton = document.querySelector('.palette-controls .control-btn');
     if (clearButton) {
         clearButton.addEventListener('click', function() {
             const blocks = workflowArea.querySelectorAll('.workflow-block');
@@ -843,21 +1030,6 @@ function initializeWorkflowArea() {
             connections.forEach(connection => connection.remove());
             
             workflowArea.removeAttribute('data-initialized');
-        });
-    }
-    
-    // 전체 실행 버튼 이벤트
-    const executeAllButton = document.querySelector('.palette-controls .control-btn:first-child');
-    if (executeAllButton) {
-        executeAllButton.addEventListener('click', function() {
-            const allData = getAllWorkflowData();
-            if (allData.length === 0) {
-                alert('실행할 블록이 없습니다.');
-                return;
-            }
-            
-            console.log('전체 워크플로우 실행:', allData);
-            alert(`${allData.length}개 블록 실행 준비됨:\n${allData.map(item => item.command).join('\n')}`);
         });
     }
 }
@@ -888,10 +1060,48 @@ function displayPermissions(permissions) {
 }
 
 /**
+ * 사용자 상태 삭제 API 호출 함수
+ * 로그아웃 또는 창 닫기 시 호출
+ */
+async function deleteUserState(username) {
+    try {
+        console.log('사용자 상태 삭제 요청:', username); // 디버깅용
+        
+        const response = await fetch(`${API_ENDPOINT}/api/delete_user_state`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: username
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`사용자 상태 삭제 API 응답 오류: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('사용자 상태 삭제 응답:', data); // 디버깅용
+        
+    } catch (error) {
+        console.error('사용자 상태 삭제 실패:', error);
+        // 상태 삭제 실패는 로그아웃 과정을 방해하지 않음
+    }
+}
+
+/**
  * 로그아웃 함수
  * 로컬 스토리지의 사용자 정보를 삭제하고 로그인 페이지로 이동
  */
 function handleLogout() {
+    const username = localStorage.getItem('username');
+    
+    // 사용자 상태 삭제 API 호출
+    if (username) {
+        deleteUserState(username);
+    }
+    
     // 로컬 스토리지에서 사용자 정보 삭제
     localStorage.removeItem('username');
     localStorage.removeItem('level');
@@ -917,4 +1127,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (logoutButton) {
         logoutButton.addEventListener('click', handleLogout);
     }
+    
+    // 창 닫기 또는 페이지 이탈 시 사용자 상태 삭제
+    window.addEventListener('beforeunload', function(e) {
+        const username = localStorage.getItem('username');
+        if (username) {
+            // navigator.sendBeacon을 사용하여 비동기적으로 API 호출
+            // 이는 페이지가 닫히더라도 요청이 완료될 가능성을 높임
+            const data = JSON.stringify({ user_id: username });
+            navigator.sendBeacon(`${API_ENDPOINT}/api/delete_user_state`, data);
+        }
+    });
+    
+    // 페이지 이탈 시에도 처리 (브라우저 호환성을 위해)
+    window.addEventListener('unload', function(e) {
+        const username = localStorage.getItem('username');
+        if (username) {
+            navigator.sendBeacon(`${API_ENDPOINT}/api/delete_user_state`, 
+                JSON.stringify({ user_id: username }));
+        }
+    });
 });

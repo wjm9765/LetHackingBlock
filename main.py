@@ -247,6 +247,10 @@ class CommandRequest(BaseModel):
     command_name: str
     params: dict = {}
 
+class Answer(BaseModel):
+    answer : str
+    level: int
+
 class UserRequest(BaseModel):
     user_id: str
 
@@ -394,6 +398,33 @@ async def return_environment():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"환경 정보 로드 중 오류 발생: {str(e)}")
 
+@app.post("/api/correct_answer")
+async def correct_answer(request: Answer):
+    """
+    사용자가 입력한 정답을 비교하는 API 엔드포인트
+    """
+
+    level = request.level  # 레벨은 user_id로 전달된다고 가정
+    # load.py의 함수를 사용하여 레벨에 해당하는 접속 정보 조회
+    item = load_json(BANDIT_SSH, str(level))
+
+    # 비밀번호 정보 추출
+    password = item.get("password")
+
+    if(password == request.answer):
+        print(f"정답입니다! ")
+        return{
+            "success": True
+        }
+    else:
+        print("오답입니다")
+        return{
+            "success": False,
+        }
+    
+
+        
+    
 @app.post("/api/return_commands")
 async def return_commands(request: CommandSearchRequest):
     """

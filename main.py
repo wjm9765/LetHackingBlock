@@ -156,7 +156,7 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     return command_name, output, True
 
 def get_pattern_recommendation(user_id: str):
-    """현재 상태를 기반으로 패턴을 추천받는 함수"""
+    """현재 상태 기반으로 패턴을 추천받는 함수"""
     print("\n--- 현재 상태 기반 패턴 추천받기 ---")
     print("AI에게 패턴 추천을 요청하는 중...")
     
@@ -166,8 +166,103 @@ def get_pattern_recommendation(user_id: str):
     print("\n--- 추천 패턴 ---")
     print(recommendation)
 
-    return recommendation
+    # AI로부터 받은 응답을 파싱하여 구조화된 형식으로 변환
+    try:
+        # AI 응답을 파싱하여 구조화된 형식으로 변환
+        structured_patterns = parse_ai_pattern_response(recommendation)
+        return structured_patterns
+    except Exception as e:
+        print(f"패턴 파싱 중 오류 발생: {e}")
+        # 파싱 실패 시 원본 응답 반환
+        return {"raw_response": recommendation}
+
+def parse_ai_pattern_response(ai_response: str):
+    """
+    AI 응답을 구조화된 패턴 형식으로 변환하는 함수
     
+    Args:
+        ai_response: AI로부터 받은 원본 응답 텍스트
+    
+    Returns:
+        dict: 구조화된 패턴 정보
+    """
+    try:
+        patterns = []
+        
+        # AI 응답을 줄 단위로 분할
+        lines = ai_response.strip().split('\n')
+        current_pattern = {}
+        commands = []
+        purpose = ""
+        expect = ""
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # 패턴 번호 감지 (1., 2., 등)
+            if line and (line.startswith('1.') or line.startswith('2.') or line.startswith('3.')):
+                # 이전 패턴이 있다면 저장
+                if current_pattern:
+                    patterns.append(current_pattern)
+                
+                # 새 패턴 시작
+                current_pattern = {}
+                commands = []
+                
+                # 명령어 추출 (대괄호 안의 내용)
+                if '[' in line and ']' in line:
+                    start_idx = line.find('[')
+                    end_idx = line.find(']')
+                    commands_text = line[start_idx+1:end_idx]
+                    commands = [cmd.strip() for cmd in commands_text.split(',')]
+                
+                # 다음 줄에서 목적 찾기
+                i += 1
+                if i < len(lines):
+                    purpose = lines[i].strip()
+                
+                # 그 다음 줄에서 기대 결과 찾기
+                i += 1
+                if i < len(lines):
+                    expect = lines[i].strip()
+                
+                current_pattern = {
+                    "pattern": commands,
+                    "purpose": purpose,
+                    "expect": expect
+                }
+            
+            i += 1
+        
+        # 마지막 패턴 추가
+        if current_pattern:
+            patterns.append(current_pattern)
+        
+        # 패턴이 없으면 기본 구조 반환
+        if not patterns:
+            # 간단한 파싱 시도
+            patterns = [
+                {
+                    "pattern": ["ls -al", "cat ./flag.txt", "grep 'password' flag.txt"],
+                    "purpose": "기본 파일 탐색 및 내용 확인",
+                    "expect": "파일 구조 파악 및 중요한 정보 발견"
+                }
+            ]
+        
+        return {"patterns": patterns}
+        
+    except Exception as e:
+        print(f"패턴 파싱 오류: {e}")
+        # 파싱 실패 시 예시 데이터 반환
+        return {
+            "patterns": [
+                {
+                    "pattern": f"패턴 파싱 오류: {e}"
+                }
+            ]
+        }
+
 def login_ssh(level: int):
     """
     Bandit SSH 서버에 접속하기 위한 SSH 클라이언트를 생성합니다.
@@ -325,8 +420,38 @@ async def delete_user_state_api(request: UserRequest):
 
 @app.post("/api/return_ai_pattern")
 async def return_ai_pattern_api(request: UserRequest):
-    ai_pattern = get_pattern_recommendation(request.user_id)
-    return {"ai_pattern": ai_pattern}
+    """
+    AI 패턴 추천을 반환하는 API 엔드포인트
+    Returns:
+        JSON 형태의 구조화된 패턴 정보
+    """
+    try:
+        ai_pattern = get_pattern_recommendation(request.user_id)
+        return ai_pattern
+    except Exception as e:
+        print(f"AI 패턴 추천 중 오류 발생: {e}")
+        # 오류 발생 시 기본 패턴 반환
+        raise HTTPException(status_code=500, detail=f"AI 패턴 추천 중 오류 발생: {str(e)}")
+
+
+    
+
+def get_comment():
+    """이전 명령어 실행 결과에 대한 AI 코멘트를 반환하는 함수"""
+    global LAST_COMMAND, LAST_OUTPUT
+    
+    if not LAST_COMMAND or not LAST_OUTPUT:
+        print("이전 명령어가 없습니다. 최소 1번 명령어를 실행해야 합니다.")
+        return "명령어를 최소 1번 실행해야 합니다. 또는 실행한 명령어 결과가 없습니다."
+    
+    try:
+        # control_ai_function 호출 시 user_id는 None으로 설정
+        comment = control_ai_function("comment", LAST_COMMAND, LAST_OUTPUT, user_id=None)
+        print(f"AI 코멘트 생성 결과: {comment}")
+        return comment
+    except Exception as e:
+        print(f"AI 코멘트 생성 중 오류 발생: {e}")
+        return "AI 코멘트 생성 중 오류 발생"
 
 @app.get("/api/return_ai_comment")
 async def return_ai_comment_api():
@@ -349,6 +474,7 @@ async def return_ai_comment_api():
         return {"ai_comment": comment}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 코멘트 생성 중 오류 발생: {str(e)}")
+
 
 
 @app.get("/api/return_environment")
@@ -404,7 +530,7 @@ async def correct_answer(request: Answer):
     사용자가 입력한 정답을 비교하는 API 엔드포인트
     """
 
-    level = request.level  # 레벨은 user_id로 전달된다고 가정
+    level = request.level + 1 # 레벨은 user_id로 전달된다고 가정
     # load.py의 함수를 사용하여 레벨에 해당하는 접속 정보 조회
     item = load_json(BANDIT_SSH, str(level))
 

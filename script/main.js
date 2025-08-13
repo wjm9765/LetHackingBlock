@@ -861,19 +861,70 @@ function getAllWorkflowData() {
             const commandTemplate = block.getAttribute('data-template') || '';
             const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
             
+            // 블록의 현재 좌표 가져오기
+            const x = parseInt(block.style.left) || 0;
+            const y = parseInt(block.style.top) || 0;
+            
             allData.push({
                 blockId: block.id,
                 blockName,
                 template: commandTemplate,
                 templateParams,
                 variables: block.workflowData.variables,
-                command
+                command,
+                coordinates: { x, y } // 좌표 정보 추가
             });
         }
     });
     
     console.log('전체 워크플로우 데이터:', allData);
     return allData;
+}
+
+/**
+ * 워크플로우 블록들의 좌표 정보만 조회
+ */
+function getAllBlockCoordinates() {
+    const blocks = document.querySelectorAll('.workflow-block');
+    const coordinates = [];
+    
+    blocks.forEach(block => {
+        const blockName = block.querySelector('.block-name').textContent;
+        const x = parseInt(block.style.left) || 0;
+        const y = parseInt(block.style.top) || 0;
+        
+        coordinates.push({
+            blockId: block.id,
+            blockName,
+            x,
+            y
+        });
+    });
+    
+    console.log('블록 좌표 정보:', coordinates);
+    return coordinates;
+}
+
+/**
+ * 가장 오른쪽에 위치한 블록의 좌표 반환
+ */
+function getRightmostBlockPosition() {
+    const blocks = document.querySelectorAll('.workflow-block');
+    let rightmostX = 0;
+    let rightmostY = 50; // 기본 Y 좌표
+    
+    blocks.forEach(block => {
+        const x = parseInt(block.style.left) || 0;
+        const y = parseInt(block.style.top) || 0;
+        const blockWidth = 250; // CSS에서 설정한 블록 너비
+        
+        if (x + blockWidth > rightmostX) {
+            rightmostX = x + blockWidth;
+            rightmostY = y; // 가장 오른쪽 블록의 Y 좌표 사용
+        }
+    });
+    
+    return { x: rightmostX, y: rightmostY };
 }
 
 /**
@@ -1150,6 +1201,18 @@ document.addEventListener('DOMContentLoaded', function() {
         logoutButton.addEventListener('click', handleLogout);
     }
     
+    // 정답 확인 버튼 이벤트 리스너
+    const answerCheckButton = document.getElementById('answer-check-btn');
+    if (answerCheckButton) {
+        answerCheckButton.addEventListener('click', openAnswerModal);
+    }
+    
+    // 정답 확인 모달 이벤트 리스너
+    setupAnswerModal();
+    
+    // 패턴 추천 모달 이벤트 리스너
+    setupPatternModal();
+    
     // 창 닫기 또는 페이지 이탈 시 사용자 상태 삭제
     window.addEventListener('beforeunload', function(e) {
         const username = localStorage.getItem('username');
@@ -1170,3 +1233,173 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+/**
+ * 정답 확인 모달 열기
+ */
+function openAnswerModal() {
+    const modal = document.getElementById('answer-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        // 입력 필드에 포커스
+        const answerInput = document.getElementById('answer-input');
+        if (answerInput) {
+            answerInput.focus();
+        }
+    }
+}
+
+/**
+ * 정답 확인 모달 닫기
+ */
+function closeAnswerModal() {
+    const modal = document.getElementById('answer-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        // 입력 필드 초기화
+        const answerInput = document.getElementById('answer-input');
+        if (answerInput) {
+            answerInput.value = '';
+        }
+    }
+}
+
+/**
+ * 정답 확인 모달 이벤트 설정
+ */
+function setupAnswerModal() {
+    const modal = document.getElementById('answer-modal');
+    const closeBtn = modal?.querySelector('.close');
+    const answerForm = document.getElementById('answer-form');
+    
+    // 닫기 버튼 클릭 시
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeAnswerModal);
+    }
+    
+    // 모달 외부 클릭 시 닫기
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeAnswerModal();
+            }
+        });
+    }
+    
+    // 폼 제출 이벤트
+    if (answerForm) {
+        answerForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            submitAnswer();
+        });
+    }
+    
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const answerModal = document.getElementById('answer-modal');
+            const patternModal = document.getElementById('pattern-modal');
+            
+            if (answerModal && answerModal.style.display === 'block') {
+                closeAnswerModal();
+            }
+            if (patternModal && patternModal.style.display === 'block') {
+                closePatternModal();
+            }
+        }
+    });
+}
+
+/**
+ * 패턴 추천 모달 이벤트 설정
+ */
+function setupPatternModal() {
+    const modal = document.getElementById('pattern-modal');
+    const closeBtn = modal?.querySelector('.pattern-close');
+    
+    // 닫기 버튼 클릭 시
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closePatternModal);
+    }
+    
+    // 모달 외부 클릭 시 닫기
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closePatternModal();
+            }
+        });
+    }
+}
+
+/**
+ * 정답 제출
+ */
+async function submitAnswer() {
+    const answerInput = document.getElementById('answer-input');
+    const answer = answerInput?.value.trim();
+    
+    if (!answer) {
+        alert('답을 입력해주세요.');
+        return;
+    }
+    
+    const username = localStorage.getItem('username');
+    const level = localStorage.getItem('level');
+    
+    if (!username || !level) {
+        alert('사용자 정보를 찾을 수 없습니다.');
+        return;
+    }
+    
+    try {
+        // 제출 버튼 비활성화
+        const submitBtn = document.querySelector('.btn-submit');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '제출 중...';
+        }
+        
+        const response = await fetch(`${API_ENDPOINT}/api/correct_answer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: username,
+                level: parseInt(level),
+                answer: answer
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('정답입니다! 축하합니다! 🎉');
+            closeAnswerModal();
+            // 필요시 다음 레벨로 이동하는 로직 추가
+        } else {
+            alert('틀렸습니다. 다시 시도해보세요.');
+            // 입력 필드 선택하여 다시 입력할 수 있도록
+            answerInput.select();
+        }
+        
+    } catch (error) {
+        console.error('정답 확인 중 오류 발생:', error);
+        alert('서버 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+        // 제출 버튼 복원
+        const submitBtn = document.querySelector('.btn-submit');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '제출';
+        }
+    }
+}
+
+// AI.js에서 사용할 수 있도록 전역 함수로 노출
+window.fetchCommandDetails = fetchCommandDetails;
+window.createWorkflowBlock = createWorkflowBlock;
+window.autoConnectBlocks = autoConnectBlocks;
+window.getAllBlockCoordinates = getAllBlockCoordinates;
+window.getRightmostBlockPosition = getRightmostBlockPosition;

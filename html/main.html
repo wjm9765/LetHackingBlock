@@ -13,7 +13,10 @@
             <span>사용자: <span id="user-display">로딩중...</span></span>
             <span>레벨: <span id="level-display">-</span></span>
         </div>
-        <button id="logout-button" class="logout-btn">로그아웃</button>
+        <div class="header-buttons">
+            <button id="answer-check-btn" class="answer-check-btn">정답 확인</button>
+            <button id="logout-button" class="logout-btn">로그아웃</button>
+        </div>
     </div>
     
     <div class="container">
@@ -54,7 +57,10 @@
                 <div class="ai-comment-section">
                     <div class="ai-header">
                         <div class="ai-title">🤖 AI 코멘트</div>
-                        <button id="ai-advice-btn" class="ai-advice-btn">명령어 결과 조언</button>
+                        <div class="ai-buttons">
+                            <button id="ai-advice-btn" class="ai-advice-btn">명령어 결과 조언</button>
+                            <button id="ai-pattern-btn" class="ai-advice-btn">명령어 패턴 추천</button>
+                        </div>
                     </div>
                     <div class="ai-content">
                         <div class="ai-text">
@@ -77,6 +83,38 @@
                         <!-- 드래그된 명령어 블록들이 여기에 표시됩니다 -->
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 정답 확인 모달 -->
+    <div id="answer-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>정답 확인</h2>
+            <form id="answer-form">
+                <div class="form-group">
+                    <label for="answer-input">답을 입력하세요:</label>
+                    <input type="text" id="answer-input" name="answer" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-submit">제출</button>
+                    <button type="button" class="btn-cancel" onclick="closeAnswerModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 명령어 패턴 추천 모달 -->
+    <div id="pattern-modal" class="modal">
+        <div class="modal-content pattern-modal-content">
+            <span class="close pattern-close">&times;</span>
+            <h2>🔍 명령어 패턴 추천</h2>
+            <div id="pattern-loading" class="pattern-loading">
+                패턴을 가져오는 중...
+            </div>
+            <div id="pattern-content" class="pattern-content" style="display: none;">
+                <!-- 패턴 추천 내용이 여기에 표시됩니다 -->
             </div>
         </div>
     </div>

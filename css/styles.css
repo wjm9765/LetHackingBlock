@@ -29,6 +29,27 @@ body {
     color: #ffffff;
 }
 
+/* 헤더 버튼들 */
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.answer-check-btn {
+    padding: 6px 12px;
+    background-color: #31f231;
+    color: #000000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.answer-check-btn:hover {
+    background-color: #7FDD7F;
+}
+
 .logout-btn {
     padding: 6px 12px;
     background-color: #dc2626;
@@ -344,6 +365,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.ai-buttons {
+    display: flex;
+    gap: 8px;
 }
 
 .ai-title {
@@ -765,4 +791,213 @@ body {
         width: 100%;
         height: 50%;
     }
+}
+
+/* 정답 확인 모달 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+    background-color: #1a1a1a;
+    margin: 15% auto;
+    padding: 30px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    color: #ffffff;
+    border: 1px solid #333333;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover {
+    color: #ffffff;
+}
+
+.modal h2 {
+    margin-bottom: 20px;
+    color: #ffffff;
+    font-size: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    background-color: #2a2a2a;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #16a34a;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.btn-submit, .btn-cancel {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 10px;
+}
+
+.btn-submit {
+    background-color: #16a34a;
+    color: white;
+}
+
+.btn-submit:hover {
+    background-color: #15803d;
+}
+
+.btn-cancel {
+    background-color: #6b7280;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background-color: #4b5563;
+}
+
+/* 명령어 패턴 추천 모달 */
+.pattern-modal-content {
+    width: 700px;
+    max-width: 95%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.pattern-loading {
+    text-align: center;
+    padding: 40px;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.pattern-content {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.pattern-item {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border-left: 4px solid #3b82f6;
+}
+
+.pattern-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
+
+.pattern-apply-btn {
+    background-color: #16a34a;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.pattern-apply-btn:hover {
+    background-color: #15803d;
+}
+
+.pattern-purpose {
+    font-size: 16px;
+    font-weight: 600;
+    color: #3b82f6;
+    margin-bottom: 12px;
+}
+
+.pattern-commands {
+    background-color: #1a1a1a;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-family: 'Courier New', monospace;
+}
+
+.pattern-command {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 6px;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+}
+
+.pattern-command:last-child {
+    margin-bottom: 0;
+}
+
+.command-number {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-size: 12px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.command-text {
+    color: #22c55e;
+    font-size: 14px;
+    flex: 1;
+}
+
+.pattern-expect {
+    font-size: 14px;
+    color: #e5e7eb;
+    line-height: 1.5;
+    padding: 12px;
+    background-color: #374151;
+    border-radius: 6px;
+    border-left: 3px solid #22c55e;
+}
+
+.pattern-expect::before {
+    content: "💡 예상 결과: ";
+    font-weight: 600;
+    color: #22c55e;
 }

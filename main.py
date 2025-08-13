@@ -191,57 +191,67 @@ def parse_ai_pattern_response(ai_response: str):
         
         # AI 응답을 줄 단위로 분할
         lines = ai_response.strip().split('\n')
-        current_pattern = {}
-        commands = []
-        purpose = ""
-        expect = ""
         
         i = 0
         while i < len(lines):
             line = lines[i].strip()
             
-            # 패턴 번호 감지 (1., 2., 등)
+            # 패턴 번호 감지 (1., 2., 3. 등)
             if line and (line.startswith('1.') or line.startswith('2.') or line.startswith('3.')):
-                # 이전 패턴이 있다면 저장
-                if current_pattern:
-                    patterns.append(current_pattern)
+                pattern_commands = []
+                purpose = ""
+                expect = ""
                 
-                # 새 패턴 시작
-                current_pattern = {}
-                commands = []
-                
-                # 명령어 추출 (대괄호 안의 내용)
-                if '[' in line and ']' in line:
-                    start_idx = line.find('[')
-                    end_idx = line.find(']')
-                    commands_text = line[start_idx+1:end_idx]
-                    commands = [cmd.strip() for cmd in commands_text.split(',')]
-                
-                # 다음 줄에서 목적 찾기
+                # 다음 줄부터 패턴 정보 파싱
                 i += 1
-                if i < len(lines):
-                    purpose = lines[i].strip()
                 
-                # 그 다음 줄에서 기대 결과 찾기
-                i += 1
-                if i < len(lines):
-                    expect = lines[i].strip()
+                # 명령어 추출 (대괄호로 시작하는 줄들)
+                while i < len(lines) and lines[i].strip().startswith('[') and not '[이 패턴의 목적]' in lines[i]:
+                    cmd_line = lines[i].strip()
+                    if cmd_line.startswith('[') and cmd_line.endswith(']'):
+                        command = cmd_line[1:-1]  # 대괄호 제거
+                        pattern_commands.append(command)
+                    i += 1
                 
-                current_pattern = {
-                    "pattern": commands,
-                    "purpose": purpose,
-                    "expect": expect
-                }
+                # [이 패턴의 목적] 찾기
+                if i < len(lines) and '[이 패턴의 목적]' in lines[i]:
+                    i += 1
+                    # 목적 내용 수집 ([기대할 수 있는 결과]가 나올 때까지)
+                    purpose_lines = []
+                    while i < len(lines) and '[기대할 수 있는 결과]' not in lines[i]:
+                        purpose_lines.append(lines[i].strip())
+                        i += 1
+                    purpose = ' '.join(purpose_lines).strip()
+                
+                # [기대할 수 있는 결과] 찾기
+                if i < len(lines) and '[기대할 수 있는 결과]' in lines[i]:
+                    i += 1
+                    # 기대 결과 내용 수집 (다음 숫자 패턴이 나올 때까지)
+                    expect_lines = []
+                    while i < len(lines):
+                        next_line = lines[i].strip()
+                        # 다음 패턴 번호가 나오면 중단
+                        if next_line.startswith('1.') or next_line.startswith('2.') or next_line.startswith('3.'):
+                            break
+                        expect_lines.append(next_line)
+                        i += 1
+                    expect = ' '.join(expect_lines).strip()
+                
+                # 패턴 추가
+                if pattern_commands:
+                    patterns.append({
+                        "pattern": pattern_commands,
+                        "purpose": purpose,
+                        "expect": expect
+                    })
+                
+                # i는 이미 다음 패턴의 위치에 있으므로 continue
+                continue
             
             i += 1
         
-        # 마지막 패턴 추가
-        if current_pattern:
-            patterns.append(current_pattern)
-        
         # 패턴이 없으면 기본 구조 반환
         if not patterns:
-            # 간단한 파싱 시도
             patterns = [
                 {
                     "pattern": ["ls -al", "cat ./flag.txt", "grep 'password' flag.txt"],
@@ -254,11 +264,12 @@ def parse_ai_pattern_response(ai_response: str):
         
     except Exception as e:
         print(f"패턴 파싱 오류: {e}")
-        # 파싱 실패 시 예시 데이터 반환
         return {
             "patterns": [
                 {
-                    "pattern": f"패턴 파싱 오류: {e}"
+                    "pattern": ["ls -al", "cat ./flag.txt", "grep 'password' flag.txt"],
+                    "purpose": "기본 파일 탐색 및 내용 확인",
+                    "expect": "파일 구조 파악 및 중요한 정보 발견"
                 }
             ]
         }

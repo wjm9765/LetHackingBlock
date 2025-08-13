@@ -1,2 +1,4 @@
 .env
 GTPyhop/.git
+./HackingBlock/Command
+./HackingBlock/State_Initial

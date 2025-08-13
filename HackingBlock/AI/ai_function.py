@@ -134,6 +134,7 @@ def recommend_hacking_patterns(state_data: dict, shell_commands: list, shell_met
 메타 문자를 사용하여 공백 있는 파일의 입력을 제대로 처리하고, 권한을 변경하여 파일 내용을 읽기
 flag/test.txt 파일의 내용을 성공적으로 읽을 수 있음
 
+주의할 점: 명령어 뒤에 _command 를 붙이지 마세요. 예시) grep_command, find_command 등은 사용하지 마세요. 그냥 grep, find 등으로 작성해주세요.
 """
 
     # 토큰 수 계산

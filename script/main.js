@@ -510,6 +510,7 @@ function createWorkflowBlock(commandDetails, x, y) {
             <div class="block-header">
                 <span class="block-icon">&lt;/&gt;</span>
                 <span class="block-name">${commandName}</span>
+                <button class="pipe-btn" onclick="togglePipeExpansion('${blockId}')" title="파이프 명령어 추가">|</button>
                 <button class="delete-btn" onclick="deleteWorkflowBlock('${blockId}')">✕</button>
                 <button class="play-btn" onclick="executeBlock('${blockId}')">▶️</button>
             </div>
@@ -519,6 +520,9 @@ function createWorkflowBlock(commandDetails, x, y) {
             </div>
             <div class="connection-point left"></div>
             <div class="connection-point right"></div>
+            <div class="pipe-expansion" style="display: none;">
+                <div class="pipe-drop-zone">파이프 명령어를 여기에 드래그하세요</div>
+            </div>
         </div>
     `;
    
@@ -786,6 +790,229 @@ function autoConnectBlocks() {
 }
 
 /**
+ * 파이프 확장 토글 함수
+ */
+function togglePipeExpansion(blockId) {
+    const block = document.getElementById(blockId);
+    if (!block) return;
+    
+    const expansion = block.querySelector('.pipe-expansion');
+    const pipeBtn = block.querySelector('.pipe-btn');
+    
+    if (expansion.style.display === 'none' || !expansion.classList.contains('active')) {
+        // 확장 표시
+        expansion.style.display = 'block';
+        expansion.classList.add('active');
+        pipeBtn.textContent = '−';
+        pipeBtn.title = '파이프 확장 닫기';
+        
+        // 파이프 드롭 존 이벤트 설정
+        setupPipeDropZone(block);
+    } else {
+        // 확장 숨김
+        expansion.style.display = 'none';
+        expansion.classList.remove('active');
+        pipeBtn.textContent = '|';
+        pipeBtn.title = '파이프 명령어 추가';
+        
+        // 파이프 명령어가 있다면 제거
+        removePipeCommand(block);
+    }
+    
+    // 연결선 업데이트
+    updateAllConnections();
+}
+
+/**
+ * 파이프 드롭 존 설정
+ */
+function setupPipeDropZone(block) {
+    const dropZone = block.querySelector('.pipe-drop-zone');
+    
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+        
+        const commandName = e.dataTransfer.getData('text/plain');
+        console.log('파이프 명령어 드롭:', commandName);
+        
+        // 파이프 명령어 추가
+        addPipeCommand(block, commandName);
+    });
+}
+
+/**
+ * 파이프 명령어 추가
+ */
+async function addPipeCommand(block, commandName) {
+    try {
+        // 명령어 상세 정보 가져오기
+        const commandDetails = await fetchCommandDetails(commandName);
+        if (!commandDetails) {
+            console.error('파이프 명령어 상세 정보를 가져올 수 없습니다.');
+            return;
+        }
+        
+        const actualCommand = commandDetails.command || commandDetails;
+        const pipeCommandName = actualCommand.command_name || actualCommand.name || '알 수 없는 명령어';
+        const pipeDescription = actualCommand.description || '설명이 없습니다.';
+        const pipeCommandTemplate = actualCommand.command_template || '';
+        
+        // 템플릿에서 매개변수 추출
+        const templateParams = pipeCommandTemplate.match(/\{(\w+)\}/g) || [];
+        
+        // 파이프 명령어 입력 필드 HTML 생성
+        const pipeInputFieldsHTML = templateParams.map((param, index) => {
+            const paramName = param.replace(/[{}]/g, '');
+            
+            if (paramName === 'options' && actualCommand.available_options) {
+                return `
+                    <div class="pipe-variable" data-index="${index}" data-param="${paramName}">
+                        <label>${paramName}</label>
+                        <select class="pipe-variable-select" data-param="${paramName}" data-index="${index}">
+                            <option value="">없음</option>
+                            ${Object.entries(actualCommand.available_options).map(([key, desc]) => 
+                                `<option value="${key}" title="${desc}">${key} - ${desc}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="pipe-variable" data-index="${index}" data-param="${paramName}">
+                        <label>${paramName} (${index + 1}번째):</label>
+                        <input type="text" class="pipe-variable-input" data-param="${paramName}" data-index="${index}" placeholder="${paramName} 입력...">
+                    </div>
+                `;
+            }
+        }).join('');
+        
+        // 파이프 명령어 블록 HTML
+        const pipeBlockHTML = `
+            <div class="pipe-command-block">
+                <div class="pipe-block-header">
+                    <span class="pipe-block-icon">|&gt;</span>
+                    <span class="pipe-block-name">${pipeCommandName}</span>
+                    <button class="pipe-remove-btn" onclick="removePipeCommand(document.getElementById('${block.id}'))">✕</button>
+                </div>
+                <div class="pipe-block-content">
+                    <div class="pipe-block-description">${pipeDescription}</div>
+                    ${pipeInputFieldsHTML}
+                </div>
+            </div>
+        `;
+        
+        // 파이프 확장 영역에 추가
+        const expansion = block.querySelector('.pipe-expansion');
+        expansion.innerHTML = pipeBlockHTML;
+        expansion.classList.add('active');
+        
+        // 파이프 명령어 데이터 저장
+        if (!block.pipeData) {
+            block.pipeData = {};
+        }
+        
+        block.pipeData = {
+            commandName: pipeCommandName,
+            template: pipeCommandTemplate,
+            variables: new Array(templateParams.length).fill(''),
+            commandDetails: actualCommand
+        };
+        
+        // 파이프 명령어 입력 필드 이벤트 설정
+        setupPipeInputEvents(block);
+        
+        console.log('파이프 명령어 추가 완료:', pipeCommandName);
+        console.log('파이프 데이터:', block.pipeData);
+        
+    } catch (error) {
+        console.error('파이프 명령어 추가 중 오류:', error);
+    }
+}
+
+/**
+ * 파이프 명령어 제거
+ */
+function removePipeCommand(block) {
+    const expansion = block.querySelector('.pipe-expansion');
+    expansion.innerHTML = '<div class="pipe-drop-zone">파이프 명령어를 여기에 드래그하세요</div>';
+    expansion.classList.remove('active');
+    
+    // 파이프 데이터 제거
+    delete block.pipeData;
+    
+    // 드롭 존 재설정
+    setupPipeDropZone(block);
+}
+
+/**
+ * 파이프 입력 필드 이벤트 설정
+ */
+function setupPipeInputEvents(block) {
+    // 일반 입력 필드
+    const inputFields = block.querySelectorAll('.pipe-variable-input');
+    inputFields.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const index = parseInt(input.getAttribute('data-index'));
+                const value = input.value;
+                
+                block.pipeData.variables[index] = value;
+                
+                console.log(`파이프 블록 ${block.id} - ${index}번째 변수 저장:`, value);
+                
+                // 시각적 표시
+                if (value === '') {
+                    input.style.backgroundColor = '#2d4a2b';
+                    input.style.color = '#ffffff';
+                    input.style.fontWeight = '600';
+                } else {
+                    input.style.backgroundColor = '';
+                    input.style.color = '#22c55e';
+                    input.style.fontWeight = '600';
+                }
+            }
+        });
+    });
+    
+    // 드롭다운 선택 필드
+    const selectFields = block.querySelectorAll('.pipe-variable-select');
+    selectFields.forEach(select => {
+        select.addEventListener('change', function() {
+            const index = parseInt(select.getAttribute('data-index'));
+            const value = select.value;
+            
+            block.pipeData.variables[index] = value;
+            
+            console.log(`파이프 블록 ${block.id} - ${index}번째 변수 선택:`, value);
+            
+            // 시각적 표시
+            if (value) {
+                select.style.color = '#22c55e';
+                select.style.fontWeight = '600';
+            } else {
+                select.style.color = '#ffffff';
+                select.style.fontWeight = 'normal';
+            }
+        });
+    });
+}
+
+/**
  * 워크플로우 블록 삭제
  */
 function deleteWorkflowBlock(blockId) {
@@ -955,6 +1182,35 @@ async function executeBlock(blockId) {
         return;
     }
     
+    // 파이프 명령어가 있는지 확인
+    const pipeExpansion = block.querySelector('.pipe-expansion');
+    const hasPipeCommand = pipeExpansion && pipeExpansion.classList.contains('active') && 
+                          pipeExpansion.querySelector('.pipe-command-block') !== null;
+    
+    console.log('파이프 명령어 확인:', {
+        hasExpansion: !!pipeExpansion,
+        isActive: pipeExpansion?.classList.contains('active'),
+        hasCommandBlock: !!pipeExpansion?.querySelector('.pipe-command-block'),
+        hasPipeCommand
+    });
+    
+    if (hasPipeCommand) {
+        // 파이프 명령어 실행
+        console.log('🔀 파이프 명령어 실행 경로 선택 - /api/execute_pipe_command 호출');
+        await executePipeCommand(block);
+    } else {
+        // 일반 명령어 실행
+        console.log('📝 일반 명령어 실행 경로 선택 - /api/execute_command 호출');
+        await executeNormalCommand(block, username, level, commandName, commandTemplate);
+    }
+}
+
+/**
+ * 일반 명령어 실행
+ */
+async function executeNormalCommand(block, username, level, commandName, commandTemplate) {
+    const blockId = block.dataset.blockId;
+    
     // 템플릿 파라미터와 변수를 매칭하여 params 객체 생성
     const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
     const params = {};
@@ -977,6 +1233,7 @@ async function executeBlock(blockId) {
     
     try {
         // 백엔드 API 호출
+        console.log('🌐 일반 명령어 API 호출: /api/execute_command');
         const response = await fetch(`${API_ENDPOINT}/api/execute_command`, {
             method: 'POST',
             headers: {
@@ -1024,6 +1281,167 @@ async function executeBlock(blockId) {
     } catch (error) {
         console.error('명령어 실행 API 호출 실패:', error);
         addTerminalOutput(`명령어 실행 실패: ${error.message}`, false, commandName);
+    }
+}
+
+/**
+ * 파이프 명령어 실행
+ */
+async function executePipeCommand(workflowBlock) {
+    console.log('파이프 명령어 실행 시작');
+    
+    try {
+        // 사용자 정보 가져오기
+        const username = localStorage.getItem('username');
+        const level = localStorage.getItem('level');
+        
+        if (!username || !level) {
+            addTerminalOutput('사용자 정보가 없습니다. 다시 로그인해주세요.', false);
+            return;
+        }
+        
+        // 메인 명령어 정보 가져오기
+        const commandName = workflowBlock.querySelector('.block-name').textContent;
+        const commandTemplate = workflowBlock.getAttribute('data-template') || '';
+        
+        if (!workflowBlock.workflowData || !workflowBlock.workflowData.variables) {
+            addTerminalOutput('블록 데이터가 없습니다.', false);
+            return;
+        }
+        
+        // 메인 명령어 템플릿 파라미터와 변수 매칭
+        const templateParams = commandTemplate.match(/\{(\w+)\}/g) || [];
+        const params = {};
+        
+        templateParams.forEach((param, index) => {
+            const paramName = param.replace(/[{}]/g, '');
+            const value = workflowBlock.workflowData.variables[index];
+            if (value !== undefined) {
+                params[paramName] = value;
+            }
+        });
+        
+        // 메인 명령어 조립
+        let mainCommand = commandTemplate;
+        templateParams.forEach((param, index) => {
+            const value = workflowBlock.workflowData.variables[index] || '';
+            mainCommand = mainCommand.replace(param, value);
+        });
+        
+        // 여러 공백을 하나로 줄이고 trim
+        mainCommand = mainCommand.replace(/\s+/g, ' ').trim();
+        
+        console.log('조립된 메인 명령어:', mainCommand);
+        
+        // 파이프 명령어 수집
+        const pipeCommands = [];
+        const pipeCommandBlock = workflowBlock.querySelector('.pipe-command-block');
+        
+        if (pipeCommandBlock && workflowBlock.pipeData) {
+            const pipeTemplate = workflowBlock.pipeData.template || '';
+            const pipeVariables = workflowBlock.pipeData.variables || [];
+            
+            // 파이프 명령어 조립
+            let pipeCommand = pipeTemplate;
+            const pipeTemplateParams = pipeTemplate.match(/\{(\w+)\}/g) || [];
+            
+            pipeTemplateParams.forEach((param, index) => {
+                const value = pipeVariables[index] || '';
+                pipeCommand = pipeCommand.replace(param, value);
+            });
+            
+            pipeCommand = pipeCommand.replace(/\s+/g, ' ').trim();
+            if (pipeCommand) {
+                pipeCommands.push(pipeCommand);
+            }
+        }
+        
+        console.log('파이프 명령어들:', pipeCommands);
+        
+        // 파이프 명령어 문자열 조립 (메인 명령어만 + " | ")
+        let pipeCommandString = mainCommand + ' | ';
+        
+        console.log('최종 파이프 명령어 문자열:', pipeCommandString);
+        
+        // 두 번째 명령어(파이프 명령어) 정보 준비
+        let secondCommandName = commandName; // 기본값
+        let secondParams = params; // 기본값
+        
+        if (pipeCommandBlock && workflowBlock.pipeData) {
+            // 두 번째 명령어 이름
+            secondCommandName = workflowBlock.pipeData.commandName;
+            
+            // 두 번째 명령어 params 준비
+            const pipeTemplate = workflowBlock.pipeData.template || '';
+            const pipeVariables = workflowBlock.pipeData.variables || [];
+            const pipeTemplateParams = pipeTemplate.match(/\{(\w+)\}/g) || [];
+            
+            secondParams = {};
+            pipeTemplateParams.forEach((param, index) => {
+                const paramName = param.replace(/[{}]/g, '');
+                const value = pipeVariables[index];
+                if (value !== undefined) {
+                    secondParams[paramName] = value;
+                }
+            });
+        }
+        
+        console.log('두 번째 명령어 정보:', {
+            commandName: secondCommandName,
+            params: secondParams,
+            pipeCommand: pipeCommandString
+        });
+        
+        // 파이프 명령어 실행 API 호출 (두 번째 명령어 기준으로)
+        console.log('🌐 파이프 명령어 API 호출: /api/execute_pipe_command');
+        console.log('실행하게 될 명령어', pipeCommandString + secondCommandName);
+
+        const response = await fetch(`${API_ENDPOINT}/api/execute_pipe_command`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: username,
+                environment_number: level,
+                command_name: secondCommandName,
+                params: secondParams,
+                pipecommand: pipeCommandString
+            })
+        });
+        
+        // 응답이 JSON 형태인지 확인
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`서버에서 올바르지 않은 응답 형식을 반환했습니다: ${response.status}`);
+        }
+        
+        
+        const result = await response.json();
+        console.log('파이프 명령어 실행 결과:', result);
+        
+        // 터미널에 명령어 표시 (파이프 명령어 전체)
+        //addTerminalOutput(`$ ${mainCommand} | ${secondCommandName}`, true, secondCommandName);
+        
+
+        // 결과 처리
+        if (result.success === false) {
+            addTerminalOutput('파이프 명령어 실행 실패 ! 명령어 조합을 고려해보세요', false, mainCommand + '|' + secondCommandName);
+            console.log('파이프 명령어 실행 실패:', result.detail || result.message || '상세 정보 없음');
+        } else if (result.success === true) {
+            addTerminalOutput(result.output || '파이프 명령어가 성공적으로 실행되었습니다.', true, mainCommand + '|' + secondCommandName);
+        } else {
+            if (result.output === null || result.output === "None" || 
+                (typeof result.output === 'string' && result.output.trim() === '')) {
+                addTerminalOutput('파이프 명령어 실행 실패 ! 명령어 조합을 고려해보세요', false, mainCommand + '|' + secondCommandName);
+            } else {
+                addTerminalOutput(result.output || '파이프 명령어 실행에 실패했습니다.', false, mainCommand + '|' + secondCommandName);
+            }
+        }
+        
+    } catch (error) {
+        console.error('파이프 명령어 실행 실패:', error);
+        addTerminalOutput(`파이프 명령어 실행 실패: ${error.message}`, false, secondCommandName || commandName);
     }
 }
 

@@ -1,7 +1,9 @@
+from math import pi
 import os
 import sys
 import json
 from fastapi import FastAPI, HTTPException
+import pip
 from pydantic import BaseModel
 import boto3
 import paramiko
@@ -59,7 +61,7 @@ LAST_COMMAND = None
 LAST_OUTPUT = None
 SSH_CLIENT = None  # SSH 클라이언트 전역 변수 추가
 
-def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.SSHClient, command_data: dict = None):
+def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.SSHClient, command_data: dict = None, pipe_command: str = None):
     """
     명령어를 실행하는 함수
     
@@ -131,7 +133,8 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
     print(f"\n'{command_name}' 명령어 실행 중...")
     
     # method_control 함수 호출 (인자 구조 일치)
-    output = method_control(
+    if pipe_command is None:
+        output = method_control(
         engine_type=command_block['base_block_type'],
         command_template=command_block['command_template'],
         params=params,
@@ -139,8 +142,19 @@ def execute_command(user_id: str, environment_number: str, ssh_client: paramiko.
         user_id=user_id,
         environment_number=environment_number,
         ssh_client=ssh_client  # SSH 클라이언트 전달
+        )
+    else :
+        output = method_control(
+        engine_type=command_block['base_block_type'],
+        command_template=command_block['command_template'],
+        params=params,
+        block_spec=command_block,
+        user_id=user_id,
+        environment_number=environment_number,
+        ssh_client=ssh_client,  # SSH 클라이언트 전달
+        pipecommand=pipe_command
     )
-    
+
     if output is False:
         print("명령어 실행에 실패했습니다. here is main.py")
         # 프론트엔드에서 이 부분을 받아서 분기 처리할 수 있도록 수정
@@ -353,6 +367,15 @@ class CommandRequest(BaseModel):
     command_name: str
     params: dict = {}
 
+class CommandPipeRequest(BaseModel):
+    user_id: str
+    environment_number: str
+    command_name: str
+    params: dict = {}
+    pipecommand: str
+
+
+
 class Answer(BaseModel):
     answer : str
     level: int
@@ -384,6 +407,47 @@ async def login_ssh_api(request: LevelRequest):
         return {"success": True, "message": "SSH 접속 성공"}
     else:
         return {"success": False, "message": "SSH 접속 실패"}
+
+@app.post("/api/execute_pipe_command")
+async def execute_pipe_command_api(request: CommandPipeRequest):
+    global SSH_CLIENT  # 전역 변수 사용
+
+    print(f"들어온 파이프 명령어 : {request.pipecommand}") 
+
+
+    # 전역 SSH 클라이언트가 없거나 연결이 끊어진 경우 에러 반환
+    if SSH_CLIENT is None or SSH_CLIENT is False:
+        raise HTTPException(status_code=400, detail="SSH 연결이 필요합니다. 먼저 /api/login_ssh를 호출하세요.")
+    
+    try:
+        command_data = {
+            "command_name": request.command_name,
+            "params": request.params
+        }
+        
+        command_name, output , success = execute_command(
+            user_id=request.user_id,
+            environment_number=request.environment_number,
+            ssh_client=SSH_CLIENT,  # 전역 SSH 클라이언트 사용
+            command_data=command_data,
+            pipe_command=request.pipecommand
+        )
+        
+        if command_name is None or output is None:
+            if success is False:
+                print("명령어 실행에 실패했습니다. excute_command_api")
+                raise HTTPException(status_code=400, success=False, detail="명령어 실행에 실패했습니다.")
+
+        print(f"실행결과 at fastapi: {output}")
+
+        return {
+            "success": True,
+            "command_name": command_name,
+            "output": output
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"명령어 실행 중 오류 발생: {str(e)}")
 
 @app.post("/api/execute_command")
 async def execute_command_api(request: CommandRequest):

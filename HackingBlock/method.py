@@ -33,28 +33,29 @@ from HackingBlock.AI.parser import parse_output
 
 # 지금을 쉘 실행 명령어만 있지만 나중에는 웹이나 네트워크 등 다른 범용 실행 명령어가 들어올 수 있음
 
-def run_generic_shell_command(state_manager: State, command_template: str, params: dict, block_spec: dict = None, ssh_client: paramiko.SSHClient = None, user_id: str = None) -> tuple:
+def run_generic_shell_command(state_manager: State, command_template: str, params: dict, block_spec: dict = None, ssh_client: paramiko.SSHClient = None, user_id: str = None, pipecommand: str = None) -> tuple:
     """
     쉘 명령어를 실행하는 범용 엔진
+    
+    Args:
+        pipecommand: 파이프 명령어 (예: "ls -al | ")
     
     Returns:
         tuple: (state_manager, output_string)
     """
     final_command = command_template.format(**params)
+    
+    # pipecommand가 있으면 추가
+    if pipecommand is not None:
+        final_command = pipecommand + final_command
+        print(f"🔗 파이프 명령어 추가됨: {final_command}")
+
     print(f"---EXECUTING [Shell Command]---")
     print(f"COMMAND: {final_command}")
     
     # 명령어 실행
     try:
-        # # 로컬 실행 (주석 처리)
-        # result = subprocess.run(
-        #     final_command, shell=True, capture_output=True, text=True, check=True
-        # )
-        # stdout = result.stdout.strip()
-        # stderr = result.stderr.strip()
-        # execution_success = True
-        
-        # SSH 실행 (새로 추가)
+        # SSH 실행
         if ssh_client is None or not ssh_client.get_transport() or not ssh_client.get_transport().is_active():
             raise Exception("SSH 클라이언트가 연결되어 있지 않습니다. at run_generic_shell_command")
         
@@ -70,7 +71,6 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
                     final_command = f"cd {current_path} && {final_command}"
                     print(f"🔄 현재 디렉토리에서 실행: {current_path}")
                     print(f"🔄 최종 명령어: {final_command}")
-     
 
         # SSH를 통해 명령어 실행
         stdin, stdout_channel, stderr_channel = ssh_client.exec_command(final_command)
@@ -106,9 +106,8 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
     
         print(f"COMMAND FAILED - STDERR:\n{stderr}")
         return False,False
-    
 
-    # 파서 처리
+    # 파서 처리 (기존 코드와 동일)
     if block_spec and "parser_info" in block_spec:
         parser_info = block_spec.get("parser_info", {})
         parser_type = parser_info.get("type", "none")
@@ -136,7 +135,6 @@ def run_generic_shell_command(state_manager: State, command_template: str, param
                 )
                 
                 # 결과 저장 (state_class.py의 update_state 활용)
-                #state_manager.update_state(command_name, parsed_result, target_field)
                 state_manager.update_state(command_name, final_command, parsed_result, target_field, used_options)
                 print(f"✅ Parsed result saved to {target_field}")
             else:
@@ -277,7 +275,7 @@ EXECUTION_ENGINES = {
 }
 
 # --- 3. 명령어 제어 함수 ---
-def control(engine_type: str, command_template: str, params: dict, block_spec: dict = None, user_id: str = None, environment_number: str = "001", ssh_client: paramiko.SSHClient = None) -> str:
+def control(engine_type: str, command_template: str, params: dict, block_spec: dict = None, user_id: str = None, environment_number: str = "001", ssh_client: paramiko.SSHClient = None, pipecommand: str = None) -> str:
     """
     인자로 들어온 명령어 엔진에 따라 적절한 실행 함수를 호출하는 제어 함수
     
@@ -288,6 +286,8 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
         block_spec: 블록 명세
         user_id: 사용자 ID
         environment_number: 환경 번호 (기본값: "001")
+        ssh_client: SSH 클라이언트
+        pipecommand: 파이프 명령어 (예: "ls -al | ")
         
     Returns:
         str: 명령어 실행 결과 출력
@@ -309,21 +309,24 @@ def control(engine_type: str, command_template: str, params: dict, block_spec: d
         # 초기 상태로만 시작
         state_manager = State(environment_number)
         print(f"⚠️ 상태 로드 중 오류 발생: {e}. 초기 상태만 사용합니다.")
-    
-
-   #4 print(f"현재 상태\n", state_manager.state)
-
 
     if(ssh_client is None):
         # SSH 클라이언트가 제공되지 않으면 기본 클라이언트 사용
         print("🔄 SSH 클라이언트가 제공되지 않았습니다.")
         return 
-  
 
     if engine_type == 'generic_shell_command':
-        # 쉘 명령어 실행
-        state_manager, output = run_generic_shell_command(state_manager, command_template, params, block_spec, ssh_client, user_id)
-
+        # pipecommand 여부에 따라 run_generic_shell_command 호출
+        if pipecommand is None:
+            # 기존 방식
+            state_manager, output = run_generic_shell_command(
+                state_manager, command_template, params, block_spec, ssh_client, user_id
+            )
+        else:
+            # pipecommand 추가
+            state_manager, output = run_generic_shell_command(
+                state_manager, command_template, params, block_spec, ssh_client, user_id, pipecommand
+            )
 
         if state_manager is False:
             #명령어 실행 실패

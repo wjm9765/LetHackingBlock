@@ -1,5 +1,7 @@
 # **HackingBlock: AI와 함께하는 시각적 해킹 학습 플랫폼**
+HackingBlock branch : 백엔드 기능
 
+frontend branch: 프론트엔드 기능
 > ⚠️ **주의**: 본 프로젝트의 학습 환경은 [OverTheWire의 Bandit 워게임](https://overthewire.org/wargames/bandit/)을 참조하여 제작되었습니다.
 
 
